@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>คู่มือพนักงานในเครือ CRG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Sarabun', sans-serif; background: #0f172a; color: #1e293b; min-height: 100vh; }
+
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #991b1b 100%); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .login-card { width: 100%; max-width: 360px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 32px 24px; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); }
+        .login-card h2 { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .login-card p { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+        .login-logo { width: 72px; height: 72px; background: linear-gradient(135deg, #2563eb, #dc2626); border-radius: 20px; color: white; font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4); letter-spacing: 1px; }
+        .login-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: 'Sarabun', sans-serif; outline: none; margin-bottom: 14px; text-align: center; }
+        .login-input:focus { border-color: #2563eb; }
+        .login-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 14px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; font-family: 'Sarabun', sans-serif; box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4); }
+
+        #loadingScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 999999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 16px; }
+        .mini-spinner { width: 24px; height: 24px; border: 3px solid rgba(37,99,235,0.2); border-top: 3px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #mainApp { display: none; background-color: #f1f5f9; min-height: 100vh; padding-bottom: 40px; }
+        header { position: sticky; top: 0; z-index: 40; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0; padding: 12px 16px; }
+        .header-container { max-width: 896px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left h1 { font-size: 15px; font-weight: 700; color: #0f172a; }
+        .sub-title { font-size: 11px; color: #2563eb; font-weight: 600; }
+        .logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #dc2626); border-radius: 12px; color: white; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); }
+        
+        .header-btns { display: flex; gap: 8px; align-items: center; }
+        .admin-icon-btn { width: 38px; height: 38px; background: #059669; color: white; border: none; border-radius: 10px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(5,150,105,0.3); }
+        .admin-icon-btn:hover { background: #047857; }
+        .logout-btn { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Sarabun', sans-serif; }
+
+        main { max-width: 896px; margin: 0 auto; padding: 16px; }
+        .alert-box { background: #eff6ff; border: 2px solid #bfdbfe; color: #1e40af; padding: 14px; border-radius: 16px; font-size: 13px; margin-bottom: 20px; display: flex; gap: 12px; }
+        .banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #dc2626 100%); color: white; padding: 24px; border-radius: 24px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(37,99,235,0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+        .banner h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .banner p { font-size: 14px; opacity: 0.9; }
+        
+        .banner-action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+        .support-trigger-btn { background: #ffffff; color: #2563eb; border: none; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Sarabun', sans-serif; transition: 0.2s; }
+        .support-trigger-btn:hover { background: #f8fafc; transform: translateY(-2px); }
+        .check-status-btn { background: #059669; color: #ffffff; border: none; padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Sarabun', sans-serif; transition: 0.2s; }
+        .check-status-btn:hover { background: #047857; transform: translateY(-2px); }
+
+        .tab-nav { display: flex; background: #e2e8f0; padding: 6px; border-radius: 16px; gap: 8px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; color: #64748b; background: transparent; font-family: 'Sarabun', sans-serif; }
+        .tab-btn.active { background: white; color: #2563eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .category-header { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 12px 16px; border-radius: 16px; font-weight: 700; font-size: 14px; margin-bottom: 16px; }
+        .time-bg { background: #fdf2f8; border-color: #fbcfe8; color: #be185d; }
+        .step-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+        .step-header { display: flex; gap: 12px; margin-bottom: 10px; }
+        .step-num { width: 32px; height: 32px; background: #2563eb; color: white; font-weight: 700; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37,99,235,0.3); }
+        .step-num-sky { background: #dc2626; box-shadow: 0 4px 10px rgba(220,38,38,0.3); }
+        .step-title { font-size: 15px; font-weight: 700; color: #0f172a; }
+        .step-desc { font-size: 13px; color: #475569; margin-top: 2px; }
+        .img-container { margin-top: 12px; text-align: center; }
+        .img-container img { max-width: 100%; max-height: 420px; border-radius: 12px; border: 1px solid #e2e8f0; image-rendering: -webkit-optimize-contrast; object-fit: contain; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+        .modal-card { background: white; width: 100%; max-width: 520px; border-radius: 20px; padding: 24px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); text-align: left; }
+        
+        .admin-tab-nav { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; gap: 4px; margin: 12px 0 16px 0; border: 1px solid #e2e8f0; }
+        .admin-tab-btn { flex: 1; padding: 8px 4px; border: none; border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer; color: #64748b; background: transparent; font-family: 'Sarabun', sans-serif; text-align: center; }
+        .admin-tab-btn.active { background: #2563eb; color: white; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .admin-tab-content { display: none; }
+        .admin-tab-content.active { display: block; }
+
+        .stat-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 14px; padding: 14px; margin: 12px 0; text-align: center; }
+        .stat-number { font-size: 28px; font-weight: 800; color: #059669; margin-top: 2px; }
+        .visitor-list, .ticket-list, .my-ticket-list { max-height: 220px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; font-size: 12px; background: #f8fafc; margin-top: 6px; }
+        .visitor-item, .ticket-item, .my-ticket-item { padding: 8px; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 4px; }
+        .visitor-item:last-child, .ticket-item:last-child, .my-ticket-item:last-child { border-bottom: none; }
+        
+        .admin-group { margin-top: 10px; }
+        .admin-group label { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 3px; }
+        .admin-group input, .admin-group select, .admin-group textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 13px; font-family: 'Sarabun', sans-serif; outline: none; }
+        .admin-group input:focus, .admin-group textarea:focus { border-color: #2563eb; }
+        
+        .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+        .save-modal-btn { background: #2563eb; color: white; border: none; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; flex: 1; font-family: 'Sarabun', sans-serif; }
+        .close-modal-btn { background: #64748b; color: white; border: none; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; flex: 1; font-family: 'Sarabun', sans-serif; }
+
+        #maintenanceBanner { display: none; background: #dc2626; color: white; text-align: center; padding: 10px; font-size: 13px; font-weight: 700; }
+        
+        #actionLoader { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 9999999; align-items: center; justify-content: center; }
+        .loader-card { background: white; padding: 20px 30px; border-radius: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 14px; color: #1e293b; }
+
+        footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #64748b; line-height: 1.6; background: #fff; padding-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="maintenanceBanner">⚠️ ระบบอยู่ในระหว่างดำเนินการปิดปรับปรุงชั่วคราว</div>
+
+    <div id="actionLoader">
+        <div class="loader-card">
+            <div class="mini-spinner"></div>
+            <span id="loaderText">กำลังประมวลผล...</span>
+        </div>
+    </div>
+
+    <div id="loginScreen">
+        <div class="login-card">
+            <div class="login-logo">CRG</div>
+            <h2>ระบบเข้าสู่ระบบพนักงาน</h2>
+            <p>กรอกชื่อ-นามสกุลของคุณเพื่อเข้าดูคู่มือ</p>
+            <input type="text" id="employeeNameInput" class="login-input" placeholder="ระบุชื่อพนักงาน (เช่น ชนาธิป)">
+            <button type="button" class="login-btn" onclick="handleLogin()">เข้าสู่ระบบ</button>
+        </div>
+    </div>
+
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <h3 style="font-size: 16px; font-weight: 700;">กำลังเชื่อมต่อระบบ CRG...</h3>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 4px;">กำลังโหลดข้อมูลผู้ใช้งานและคู่มือ @Work</p>
+    </div>
+
+    <div id="mainApp">
+        <header>
+            <div class="header-container">
+                <div class="header-left">
+                    <div class="logo-box">CRG</div>
+                    <div>
+                        <h1>คู่มือพนักงานในเครือ CRG</h1>
+                        <p class="sub-title" id="loggedUserDisplay">เซ็นทรัล เรสตอรองส์ กรุ๊ป</p>
+                    </div>
+                </div>
+                <div class="header-btns">
+                    <!-- Square gear icon button with no text -->
+                    <button class="admin-icon-btn" onclick="openAdminPasswordModal()" title="ตั้งค่าระบบ">⚙️</button>
+                    <button class="logout-btn" onclick="handleLogout()">ออก</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="alert-box">
+                <div>⚠️</div>
+                <div><strong>คำแนะนำ:</strong> อ่านให้ครบหรือดูให้ครบ เพื่อเป็นแนวทางปฏิบัติงาน</div>
+            </div>
+
+            <div class="banner">
+                <div>
+                    <h2>ระบบคู่มือการใช้งาน @Work (CRG)</h2>
+                    <p>รวมขั้นตอนการขอเปลี่ยนกะ และการขอรับรองเวลาทำงาน</p>
+                </div>
+                <div class="banner-action-btns">
+                    <button type="button" class="support-trigger-btn" onclick="openSupportModal()">💬 แจ้งปัญหา/สอบถาม</button>
+                    <button type="button" class="check-status-btn" onclick="openCheckStatusModal()">🔍 ดูคำตอบแอดมิน</button>
+                </div>
+            </div>
+
+            <div class="tab-nav">
+                <button type="button" onclick="switchTab('shift')" id="btn-shift" class="tab-btn active">คู่มือขอเปลี่ยนกะ</button>
+                <button type="button" onclick="switchTab('time')" id="btn-time" class="tab-btn">คู่มือขอรับรองเวลา</button>
+            </div>
+
+            <div id="content-shift" class="tab-content active">
+                <div class="category-header">หมวดหมู่: ขั้นตอนการขอเปลี่ยนกะทำงาน</div>
+                <div class="step-card"><div class="step-header"><div class="step-num">1</div><div><div class="step-title">เปิดเมนูลัด</div><div class="step-desc">กดไอคอน 'ระบบ' (จุด 9 จุด) มุมขวาล่าง</div></div></div><div class="img-container"><img src="https://i.postimg.cc/XNDBkkY6/IMG-20261010-232240.jpg" alt="ขั้นตอนที่ 1"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">2</div><div><div class="step-title">เข้าสู่เมนูปฏิทิน</div><div class="step-desc">เลือกเมนู 'ปฏิทิน'</div></div></div><div class="img-container"><img src="https://i.postimg.cc/CM6nssx1/IMG-20261010-232311.jpg" alt="ขั้นตอนที่ 2"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">3</div><div><div class="step-title">เลือกวันที่</div><div class="step-desc">เลือกวันที่ต้องการเปลี่ยนกะในปฏิทิน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/pV15JJLr/IMG-20261010-232507.jpg" alt="ขั้นตอนที่ 3"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">4</div><div><div class="step-title">กดปุ่มตัวเลือก</div><div class="step-desc">กดปุ่ม (...) มุมขวาบน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/QNnKJJdV/IMG-20261010-232554.jpg" alt="ขั้นตอนที่ 4"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">5</div><div><div class="step-title">เลือกขอเปลี่ยนกะ</div><div class="step-desc">กดเลือกเมนู 'ขอเปลี่ยนกะ'</div></div></div><div class="img-container"><img src="https://i.postimg.cc/FFnkVVHH/IMG-20261010-232611.jpg" alt="ขั้นตอนที่ 5"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">6</div><div><div class="step-title">เลือกกะใหม่</div><div class="step-desc">เลือกช่วงเวลากะที่ต้องการเปลี่ยน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/qBZ6xxv6/IMG-20261010-232700.jpg" alt="ขั้นตอนที่ 6"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">7</div><div><div class="step-title">ปรับสถานะวัน</div><div class="step-desc">ปรับสถานะวันเป็น 'วันทำงาน'</div></div></div><div class="img-container"><img src="https://i.postimg.cc/HWP899k7/IMG-20261010-232721.jpg" alt="ขั้นตอนที่ 7"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num">8</div><div><div class="step-title">ใส่รหัสร้านและกดขออนุมัติ</div><div class="step-desc">ใส่รหัสร้าน แล้วกดขออนุมัติ</div></div></div><div class="img-container"><img src="https://i.postimg.cc/RCbJLLZH/IMG-20261010-232732.jpg" alt="ขั้นตอนที่ 8"></div></div>
+            </div>
+
+            <div id="content-time" class="tab-content">
+                <div class="category-header time-bg">หมวดหมู่: ขั้นตอนการขอรับรองเวลาทำงาน</div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">1</div><div><div class="step-title">ขั้นตอนที่ 1</div><div class="step-desc">เปิดหน้าหลักแอพ @Work เพื่อเริ่มขอรับรองเวลา</div></div></div><div class="img-container"><img src="https://i.postimg.cc/jqF0qLZ4/IMG-20261011-004552.png" alt="ขั้นตอนที่ 1"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">2</div><div><div class="step-title">ขั้นตอนที่ 2</div><div class="step-desc">เลือกเมนูการจัดการเวลาหรือลงชื่อเข้าใช้งาน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/8k0QkjZN/IMG-20261011-004635.png" alt="ขั้นตอนที่ 2"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">3</div><div><div class="step-title">ขั้นตอนที่ 3</div><div class="step-desc">เลือกวันที่ต้องการขอรับรองเวลาทำงาน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/3J0MkYcz/IMG-20261011-003942.jpg" alt="ขั้นตอนที่ 3"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">4</div><div><div class="step-title">ขั้นตอนที่ 4</div><div class="step-desc">ตรวจสอบรายละเอียดเวลาเข้า-ออกงาน</div></div></div><div class="img-container"><img src="https://i.postimg.cc/fTS4VDPh/IMG-20261011-004818.png" alt="ขั้นตอนที่ 4"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">5</div><div><div class="step-title">ขั้นตอนที่ 5</div><div class="step-desc">ระบุเหตุผลหรือเลือกประเภทการขอรับรองเวลา</div></div></div><div class="img-container"><img src="https://i.postimg.cc/Hs8Grdhf/IMG-20261011-004918.png" alt="ขั้นตอนที่ 5"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">6</div><div><div class="step-title">ขั้นตอนที่ 6</div><div class="step-desc">ตรวจสอบความถูกต้องของช่วงเวลา</div></div></div><div class="img-container"><img src="https://i.postimg.cc/28ssvgpV/IMG-20261011-004936.jpg" alt="ขั้นตอนที่ 6"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">7</div><div><div class="step-title">ขั้นตอนที่ 7</div><div class="step-desc">กดบันทึกหรือเลือกผู้มีอำนาจอนุมัติ</div></div></div><div class="img-container"><img src="https://i.postimg.cc/Dy99sRVG/IMG-20261011-004957.jpg" alt="ขั้นตอนที่ 7"></div></div>
+                <div class="step-card"><div class="step-header"><div class="step-num step-num-sky">8</div><div><div class="step-title">ขั้นตอนที่ 8</div><div class="step-desc">ยืนยันการส่งคำขอรับรองเวลาสำเร็จ</div></div></div><div class="img-container"><img src="https://i.postimg.cc/PrggZ0GY/IMG-20261011-005056.png" alt="ขั้นตอนที่ 8"></div></div>
+            </div>
+        </main>
+
+        <footer>
+            <p>ผู้จัดทำ: <strong id="footerAuthor">ชนาธิป จินดากลาง</strong> | ผู้จัดการร้าน: <strong id="footerManager">นันทนา ฐานกุมมา</strong></p>
+        </footer>
+    </div>
+
+    <div id="supportModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">💬 แจ้งปัญหา / สอบถามเพิ่มเติม</h3>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 14px;">พิมพ์ข้อความหรือปัญหาที่พบเพื่อให้แอดมินช่วยเหลือ</p>
+            <div class="admin-group">
+                <label>👤 ชื่อพนักงาน:</label>
+                <input type="text" id="supportName" placeholder="ระบุชื่อ-นามสกุลของคุณ">
+            </div>
+            <div class="admin-group">
+                <label>📝 ข้อความ / ปัญหาที่พบ:</label>
+                <textarea id="supportMsg" rows="3" placeholder="พิมพ์ข้อความสอบถามที่นี่..."></textarea>
+            </div>
+            <div class="modal-btns">
+                <button type="button" class="save-modal-btn" onclick="submitSupportTicket()">📤 ส่งข้อความ</button>
+                <button type="button" class="close-modal-btn" onclick="closeSupportModal()">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="checkStatusModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">🔍 ตรวจสอบสถานะและคำตอบ</h3>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 14px;">กรอกชื่อของคุณเพื่อดูข้อความที่ส่งและคำตอบจากแอดมิน</p>
+            <div class="admin-group" style="display: flex; gap: 6px;">
+                <input type="text" id="checkNameInput" placeholder="กรอกชื่อ-นามสกุลของคุณ" style="flex: 1;">
+                <button type="button" onclick="searchMyTickets()" style="background: #2563eb; color: white; border: none; padding: 10px 14px; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: 'Sarabun', sans-serif;">ค้นหา</button>
+            </div>
+            
+            <div style="font-size: 13px; font-weight: 700; color: #334155; margin-top: 14px;">📋 ผลการค้นหาข้อความของคุณ:</div>
+            <div class="my-ticket-list" id="myTicketList">
+                <div class="my-ticket-item"><span>กรุณากรอกชื่อแล้วกดค้นหา</span></div>
+            </div>
+
+            <div class="modal-btns" style="margin-top: 16px;">
+                <button type="button" class="close-modal-btn" onclick="closeCheckStatusModal()" style="flex: 1;">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="passwordModal" class="modal">
+        <div class="modal-card" style="text-align: center;">
+            <div style="width: 50px; height: 50px; background: #eff6ff; color: #2563eb; border-radius: 14px; font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; border: 2px solid #bfdbfe;">🔒</div>
+            <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">เข้าสู่ระบบแอดมิน CRG</h3>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 16px;">กรุณากรอกรหัสผ่านเพื่อจัดการหลังบ้าน</p>
+            <div class="admin-group" style="margin-bottom: 16px;">
+                <input type="password" id="adminPassInput" placeholder="กรอกรหัสผ่าน" style="text-align: center; font-size: 15px;">
+            </div>
+            <div class="modal-btns">
+                <button type="button" class="save-modal-btn" onclick="verifyAdminPassword()">ยืนยัน</button>
+                <button type="button" class="close-modal-btn" onclick="closePasswordModal()">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-size: 17px; font-weight: 700; color: #0f172a;">⚙️ แผงควบคุมแอดมิน CRG</h3>
+            <p style="font-size: 12px; color: #64748b;">เลือกหมวดหมู่ที่ต้องการจัดการด้านล่าง</p>
+
+            <div class="admin-tab-nav">
+                <button type="button" class="admin-tab-btn active" onclick="switchAdminTab('settings')" id="atab-settings">⚙️ ตั้งค่าร้าน</button>
+                <button type="button" class="admin-tab-btn" onclick="switchAdminTab('visitors')" id="atab-visitors">👥 ผู้เข้าชมเว็บ</button>
+                <button type="button" class="admin-tab-btn" onclick="switchAdminTab('tickets')" id="atab-tickets">📥 กล่องคำถาม</button>
+            </div>
+
+            <div id="acontent-settings" class="admin-tab-content active">
+                <div class="admin-group">
+                    <label>👤 แก้ไขชื่อผู้จัดทำ:</label>
+                    <input type="text" id="editAuthor" value="ชนาธิป จินดากลาง">
+                </div>
+                <div class="admin-group">
+                    <label>👔 แก้ไขชื่อผู้จัดการร้าน:</label>
+                    <input type="text" id="editManager" value="นันทนา ฐานกุมมา">
+                </div>
+                <div class="admin-group">
+                    <label>🏪 สาขา / หน่วยงาน:</label>
+                    <select id="editBranch">
+                        <option value="KFC เซ็นทรัล นครสวรรค์">KFC เซ็นทรัล นครสวรรค์</option>
+                        <option value="CRG สาขาอื่นๆ">CRG สาขาอื่นๆ</option>
+                    </select>
+                </div>
+                <div class="admin-group">
+                    <label>🛠️ สถานะปิด-เปิดปรับปรุงระบบ:</label>
+                    <select id="editMaintenance">
+                        <option value="off">เปิดใช้งานตามปกติ</option>
+                        <option value="on">ปิดปรับปรุงชั่วคราว</option>
+                    </select>
+                </div>
+                <div class="modal-btns" style="margin-top: 20px;">
+                    <button type="button" class="save-modal-btn" onclick="saveAdminSettings()">💾 บันทึกการตั้งค่า</button>
+                </div>
+            </div>
+
+            <div id="acontent-visitors" class="admin-tab-content">
+                <div class="stat-box">
+                    <div style="font-size: 12px; color: #166534;">ยอดเข้าชมเว็บไซต์ทั้งหมด</div>
+                    <div class="stat-number" id="visitorCount">0</div>
+                </div>
+                <div style="font-size: 12px; font-weight: 700; color: #334155; margin-top: 8px;">📋 รายชื่อพนักงานที่เข้าชมล่าสุด:</div>
+                <div class="visitor-list" id="visitorList">
+                    <div class="visitor-item"><span>ยังไม่มีข้อมูลผู้เข้าชม</span></div>
+                </div>
+            </div>
+
+            <div id="acontent-tickets" class="admin-tab-content">
+                <div style="font-size: 12px; font-weight: 700; color: #334155;">📥 คำถามและข้อความแจ้งปัญหาจากพนักงาน:</div>
+                <div class="ticket-list" id="ticketList">
+                    <div class="ticket-item"><span>ยังไม่มีข้อความส่งเข้ามา</span></div>
+                </div>
+            </div>
+
+            <div class="modal-btns" style="margin-top: 16px;">
+                <button type="button" class="close-modal-btn" onclick="closeAdmin()">ปิดหน้าต่าง</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            let savedUser = localStorage.getItem('crg_current_user');
+            if(savedUser) {
+                document.getElementById('employeeNameInput').value = savedUser;
+            }
+        });
+
+        function loadSettings() {
+            let author = localStorage.getItem('crg_author') || 'ชนาธิป จินดากลาง';
+            let manager = localStorage.getItem('crg_manager') || 'นันทนา ฐานกุมมา';
+            let branch = localStorage.getItem('crg_branch') || 'KFC เซ็นทรัล นครสวรรค์';
+            let maint = localStorage.getItem('crg_maintenance') || 'off';
+
+            document.getElementById('footerAuthor').innerText = author;
+            document.getElementById('footerManager').innerText = manager;
+            document.getElementById('editAuthor').value = author;
+            document.getElementById('editManager').value = manager;
+            document.getElementById('editBranch').value = branch;
+            document.getElementById('editMaintenance').value = maint;
+
+            if (maint === 'on') {
+                document.getElementById('maintenanceBanner').style.display = 'block';
+            } else {
+                document.getElementById('maintenanceBanner').style.display = 'none';
+            }
+        }
+
+        function showActionLoader(text, callback) {
+            let loader = document.getElementById('actionLoader');
+            document.getElementById('loaderText').innerText = text;
+            loader.style.display = 'flex';
+            setTimeout(() => {
+                loader.style.display = 'none';
+                if(callback) callback();
+            }, 900);
+        }
+
+        function handleLogin() {
+            let name = document.getElementById('employeeNameInput').value.trim();
+            if(!name) {
+                alert("กรุณากรอกชื่อพนักงานก่อนเข้าสู่ระบบครับ!");
+                return;
+            }
+
+            localStorage.setItem('crg_current_user', name);
+            document.getElementById('loggedUserDisplay').innerText = `พนักงาน: ${name} (CRG)`;
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('loadingScreen').style.display = 'flex';
+
+            let visitors = JSON.parse(localStorage.getItem('crg_visitors') || '[]');
+            visitors.push({ name: name, time: new Date().toLocaleString('th-TH') });
+            localStorage.setItem('crg_visitors', JSON.stringify(visitors));
+
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+            }, 1800);
+        }
+
+        function handleLogout() {
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            if (tab === 'shift') {
+                document.getElementById('btn-shift').classList.add('active');
+                document.getElementById('content-shift').classList.add('active');
+            } else {
+                document.getElementById('btn-time').classList.add('active');
+                document.getElementById('content-time').classList.add('active');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.admin-tab-content').forEach(content => content.classList.remove('active'));
+
+            document.getElementById(`atab-${tab}`).classList.add('active');
+            document.getElementById(`acontent-${tab}`).classList.add('active');
+        }
+
+        function openSupportModal() {
+            let currentUser = localStorage.getItem('crg_current_user') || '';
+            document.getElementById('supportName').value = currentUser;
+            document.getElementById('supportMsg').value = '';
+            document.getElementById('supportModal').style.display = 'flex';
+        }
+
+        function closeSupportModal() {
+            document.getElementById('supportModal').style.display = 'none';
+        }
+
+        function submitSupportTicket() {
+            let name = document.getElementById('supportName').value.trim();
+            let msg = document.getElementById('supportMsg').value.trim();
+
+            if (!name || !msg) {
+                alert("กรุณากรอกชื่อและข้อความให้ครบถ้วนครับ!");
+                return;
+            }
+
+            closeSupportModal();
+            showActionLoader("กำลังส่งข้อความหาแอดมิน...", () => {
+                let tickets = JSON.parse(localStorage.getItem('crg_tickets') || '[]');
+                tickets.push({ 
+                    id: Date.now(), 
+                    name: name, 
+                    msg: msg, 
+                    reply: '', 
+                    time: new Date().toLocaleString('th-TH') 
+                });
+                localStorage.setItem('crg_tickets', JSON.stringify(tickets));
+                alert("ส่งข้อความหาแอดมินสำเร็จแล้ว! แอดมินจะตรวจสอบและตอบกลับโดยเร็วที่สุด");
+            });
+        }
+
+        function openCheckStatusModal() {
+            let currentUser = localStorage.getItem('crg_current_user') || '';
+            document.getElementById('checkNameInput').value = currentUser;
+            if(currentUser) {
+                searchMyTickets();
+            } else {
+                document.getElementById('myTicketList').innerHTML = '<div class="my-ticket-item"><span>กรุณากรอกชื่อแล้วกดค้นหา</span></div>';
+            }
+            document.getElementById('checkStatusModal').style.display = 'flex';
+        }
+
+        function closeCheckStatusModal() {
+            document.getElementById('checkStatusModal').style.display = 'none';
+        }
+
+        function searchMyTickets() {
+            let keyword = document.getElementById('checkNameInput').value.trim().toLowerCase();
+            if (!keyword) {
+                alert("กรุณากรอกชื่อของคุณเพื่อค้นหาคำถามครับ!");
+                return;
+            }
+
+            showActionLoader("กำลังค้นหาข้อมูล...", () => {
+                let tickets = JSON.parse(localStorage.getItem('crg_tickets') || '[]');
+                let myTickets = tickets.filter(t => t.name.toLowerCase().includes(keyword));
+
+                let listEl = document.getElementById('myTicketList');
+                if (myTickets.length === 0) {
+                    listEl.innerHTML = '<div class="my-ticket-item"><span style="color: #dc2626;">ไม่พบข้อความที่ส่งในชื่อนี้</span></div>';
+                    return;
+                }
+
+                listEl.innerHTML = myTickets.map(t => `
+                    <div class="my-ticket-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 6px;">
+                        <div style="font-size: 11px; color: #64748b;">📅 ${t.time}</div>
+                        <div style="font-weight: 700; color: #1e293b;">❓ คำถาม: ${t.msg}</div>
+                        <div style="margin-top: 6px; padding: 8px; background: ${t.reply ? '#f0fdf4' : '#fffbeb'}; border-radius: 6px; border: 1px solid ${t.reply ? '#bbf7d0' : '#fde68a'};">
+                            <span style="font-weight: 700; color: ${t.reply ? '#166534' : '#b45309'};">
+                                ${t.reply ? '✔️ คำตอบจากแอดมิน: ' + t.reply : '⏳ สถานะ: รอแอดมินตอบกลับ...'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            });
+        }
+
+        function openAdminPasswordModal() {
+            document.getElementById('adminPassInput').value = '';
+            document.getElementById('passwordModal').style.display = 'flex';
+            document.getElementById('adminPassInput').focus();
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+
+        function verifyAdminPassword() {
+            let password = document.getElementById('adminPassInput').value.trim();
+            if (password === "KFC1150") {
+                closePasswordModal();
+                
+                const visitors = JSON.parse(localStorage.getItem('crg_visitors') || '[]');
+                document.getElementById('visitorCount').innerText = visitors.length;
+
+                const visitorListEl = document.getElementById('visitorList');
+                if (visitors.length === 0) {
+                    visitorListEl.innerHTML = '<div class="visitor-item"><span>ยังไม่มีผู้เข้าชม</span></div>';
+                } else {
+                    visitorListEl.innerHTML = visitors.map(v => `
+                        <div class="visitor-item" style="background: white; border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between;">
+                            <span>👤 ${v.name}</span>
+                            <span style="color: #64748b; font-size: 11px;">${v.time}</span>
+                        </div>
+                    `).join('');
+                }
+
+                renderTickets();
+                switchAdminTab('settings');
+                document.getElementById('adminModal').style.display = 'flex';
+            } else {
+                alert("รหัสผ่านแอดมินไม่ถูกต้อง!");
+                document.getElementById('adminPassInput').value = '';
+                document.getElementById('adminPassInput').focus();
+            }
+        }
+
+        function renderTickets() {
+            const tickets = JSON.parse(localStorage.getItem('crg_tickets') || '[]');
+            const listEl = document.getElementById('ticketList');
+            
+            if (tickets.length === 0) {
+                listEl.innerHTML = '<div class="ticket-item"><span>ยังไม่มีข้อความแจ้งปัญหา</span></div>';
+                return;
+            }
+
+            listEl.innerHTML = tickets.map((t) => `
+                <div class="ticket-item" style="background: white; border-radius: 8px; margin-bottom: 6px; padding: 8px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #1e293b;">
+                        <span>👤 ${t.name}</span>
+                        <span style="font-size: 10px; color: #64748b;">${t.time}</span>
+                    </div>
+                    <div style="color: #475569; margin-top: 2px;">❓ ${t.msg}</div>
+                    <div style="margin-top: 6px; display: flex; gap: 4px;">
+                        <input type="text" id="reply-${t.id}" value="${t.reply || ''}" placeholder="พิมพ์ตอบกลับพนักงาน..." style="flex: 1; padding: 6px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: 'Sarabun', sans-serif;">
+                        <button type="button" onclick="saveReply(${t.id})" style="background: #059669; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">ตอบ</button>
+                    </div>
+                    ${t.reply ? `<div style="font-size: 11px; color: #059669; margin-top: 4px;">✔️ ตอบแล้ว: ${t.reply}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function saveReply(id) {
+            let replyText = document.getElementById(`reply-${id}`).value.trim();
+            let tickets = JSON.parse(localStorage.getItem('crg_tickets') || '[]');
+            
+            tickets = tickets.map(t => {
+                if (t.id === id) {
+                    t.reply = replyText;
+                }
+                return t;
+            });
+
+            localStorage.setItem('crg_tickets', JSON.stringify(tickets));
+            alert("บันทึกการตอบกลับเรียบร้อย!");
+            renderTickets();
+        }
+
+        function saveAdminSettings() {
+            let author = document.getElementById('editAuthor').value.trim();
+            let manager = document.getElementById('editManager').value.trim();
+            let branch = document.getElementById('editBranch').value;
+            let maint = document.getElementById('editMaintenance').value;
+
+            localStorage.setItem('crg_author', author);
+            localStorage.setItem('crg_manager', manager);
+            localStorage.setItem('crg_branch', branch);
+            localStorage.setItem('crg_maintenance', maint);
+
+            loadSettings();
+            alert("บันทึกการตั้งค่าหลังบ้านเรียบร้อยแล้ว!");
+            document.getElementById('adminModal').style.display = 'none';
+        }
+
+        function closeAdmin() {
+            document.getElementById('adminModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
