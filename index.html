@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<!-- CRG Employee Manual — Modern Corporate v1.4. Performance and UI polish only; existing Firebase/auth/data logic retained. -->
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#174b86">
+    <meta name="description" content="คู่มือพนักงานในเครือ CRG — CRG Employee Manual">
+    <title>คู่มือพนักงานในเครือ CRG</title>
+    <!-- โหลดฟอนต์ Prompt และ Sarabun จาก Google Fonts เพื่อตัวอักษรที่อ่านง่าย เรียบร้อย และทันสมัย -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com">
+    <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
+    <link rel="dns-prefetch" href="https://i.postimg.cc">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+
+        /* ตั้งค่าฟอนต์และการตัดคำเพื่อไม่ให้สระหรือคำถูกตัดแยกบรรทัดผิดธรรมชาติ (แก้ปัญหาสระหลุด/ตัดคำแหว่ง) */
+        body { 
+            font-family: 'Prompt', 'Sarabun', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0f172a; 
+            color: #1e293b; 
+            min-height: 100vh;
+            word-break: keep-all; 
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6, button, .login-logo {
+            font-family: 'Prompt', sans-serif;
+            letter-spacing: -0.01em;
+        }
+
+        /* Login Screen Styling */
+        #loginScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #991b1b 100%); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .login-card { width: 100%; max-width: 360px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 32px 24px; border-radius: 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); }
+        .login-card h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 6px; line-height: 1.3; }
+        .login-card p { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+        .login-logo { width: 72px; height: 72px; object-fit: contain; margin: 0 auto 16px auto; display: block; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15)); }
+        
+        .login-input { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 14px; font-family: 'Prompt', sans-serif; outline: none; margin-bottom: 14px; text-align: center; transition: all 0.2s; }
+        .login-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+
+        /* Mobile login: keep fields reachable when the on-screen keyboard is open */
+        @media (max-width: 640px) {
+            #loginScreen {
+                height: 100vh;
+                height: 100dvh;
+                min-height: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+                justify-content: flex-start;
+                align-items: center;
+                padding: 12px 12px 24px;
+                -webkit-overflow-scrolling: touch;
+            }
+            #loginScreen > div {
+                flex: 0 0 auto;
+                width: 100%;
+                max-width: 420px;
+                margin: auto 0;
+                padding: 18px 16px;
+                border-radius: 20px;
+            }
+            #loginScreen .login-logo {
+                width: 48px;
+                height: 48px;
+                margin-bottom: 8px;
+            }
+            #loginScreen h2 { font-size: 19px; margin-bottom: 2px; }
+            #loginScreen p { margin-bottom: 10px; }
+            #loginScreen .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 8px; }
+            #loginScreen .login-input {
+                min-height: 42px;
+                padding: 9px 12px;
+                margin-bottom: 8px;
+                font-size: 16px; /* prevents mobile browser zoom on focus */
+            }
+            #forgotPasswordRequestButton { margin-top: 4px !important; margin-bottom: 8px !important; }
+            #loginScreen .mt-6 { margin-top: 10px; }
+            #loginScreen .pt-4 { padding-top: 8px; }
+        }
+
+        /* Loading Screen Styling */
+        #loadingScreen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.95); z-index: 999999; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 0.9s linear infinite; margin-bottom: 16px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Small spinner overlay for tab switching */
+        #tabLoadingOverlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; color: white; }
+        .small-spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.2); border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+
+        /* Back to top button floating */
+        #backToTopBtn { position: fixed; bottom: 24px; right: 24px; width: 48px; height: 48px; background: #2563eb; color: white; border: none; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 8px 20px rgba(37,99,235,0.4); cursor: pointer; z-index: 90; transition: all 0.3s transform ease, opacity 0.3s ease; }
+        #backToTopBtn:hover { transform: translateY(-4px) scale(1.05); background: #1d4ed8; }
+
+        /* Main Application Layout */
+        #mainApp { display: none; background-color: #f1f5f9; min-height: 100vh; padding-bottom: 40px; }
+        header { position: sticky; top: 0; z-index: 40; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e2e8f0; padding: 12px 16px; }
+        .header-container { max-width: 896px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left h1 { font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.3; }
+        .sub-title { font-size: 12px; color: #2563eb; font-weight: 600; }
+        .logo-img-header { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+        
+        .header-btns { display: flex; gap: 8px; align-items: center; }
+        .admin-icon-btn { width: 38px; height: 38px; background: #059669; color: white; border: none; border-radius: 10px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(5,150,105,0.3); }
+        .admin-icon-btn:hover { background: #047857; }
+        .exit-admin-btn { background: #dc2626; color: white; border: none; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Prompt', sans-serif; display: none; box-shadow: 0 2px 6px rgba(220,38,38,0.3); white-space: nowrap; }
+        .logout-btn { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: 'Prompt', sans-serif; white-space: nowrap; }
+
+        /* Admin Mode Indicator */
+        .admin-mode-badge { display: none; background: #dc2626; color: white; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 6px; vertical-align: middle; }
+
+        main { max-width: 896px; margin: 0 auto; padding: 16px; }
+        .alert-box { background: #eff6ff; border: 2px solid #bfdbfe; color: #1e40af; padding: 14px 16px; border-radius: 16px; font-size: 14px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start; line-height: 1.5; }
+        .banner { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #991b1b 100%); color: white; padding: 24px; border-radius: 24px; margin-bottom: 20px; box-shadow: 0 10px 25px rgba(37,99,235,0.3); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .banner h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
+        .banner p { font-size: 14px; opacity: 0.95; line-height: 1.5; }
+        
+        .banner-action-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+        .support-trigger-btn { background: #ffffff; color: #2563eb; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Prompt', sans-serif; transition: all 0.2s; white-space: nowrap; }
+        .support-trigger-btn:hover { background: #f8fafc; transform: translateY(-2px); }
+        .check-status-btn { background: #059669; color: #ffffff; border: none; padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-family: 'Prompt', sans-serif; transition: all 0.2s; white-space: nowrap; }
+        .check-status-btn:hover { background: #047857; transform: translateY(-2px); }
+
+        /* Navigation Tabs Header */
+        .tab-nav { display: flex; flex-wrap: wrap; background: #e2e8f0; padding: 6px; border-radius: 16px; gap: 6px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; min-width: 130px; padding: 12px 10px; border: none; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; color: #64748b; background: transparent; font-family: 'Prompt', sans-serif; text-align: center; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn.active { background: white; color: #2563eb; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Category Header & Step Cards */
+        .category-header { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 14px 18px; border-radius: 16px; font-weight: 700; font-size: 15px; margin-bottom: 16px; line-height: 1.4; }
+
+        .step-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+        .step-header { display: flex; gap: 14px; margin-bottom: 10px; align-items: flex-start; }
+        .step-num { width: 34px; height: 34px; background: #2563eb; color: white; font-weight: 700; font-size: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37,99,235,0.3); font-family: 'Prompt', sans-serif; }
+        
+        .step-title { font-size: 16px; font-weight: 700; color: #0f172a; line-height: 1.4; }
+        .step-desc { font-size: 14px; color: #475569; margin-top: 4px; line-height: 1.6; }
+        .img-container { margin-top: 14px; text-align: center; }
+        .img-container img { max-width: 100%; max-height: 420px; border-radius: 12px; border: 1px solid #e2e8f0; object-fit: contain; }
+
+        /* Modals and Controls */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; padding: 16px; overflow-y: auto; }
+        .modal-card { background: white; width: 100%; max-width: 600px; border-radius: 20px; padding: 24px; box-shadow: 0 15px 30px rgba(0,0,0,0.25); text-align: left; max-height: 90vh; overflow-y: auto; }
+        
+        .admin-group { margin-top: 12px; }
+        .admin-group label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+        .admin-group input, .admin-group select, .admin-group textarea { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; font-family: 'Prompt', 'Sarabun', sans-serif; outline: none; transition: border-color 0.2s; }
+        .admin-group input:focus, .admin-group select:focus, .admin-group textarea:focus { border-color: #2563eb; }
+        
+        .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .save-modal-btn { background: #2563eb; color: white; border: none; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; flex: 1; font-family: 'Prompt', sans-serif; }
+        .close-modal-btn { background: #64748b; color: white; border: none; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; flex: 1; font-family: 'Prompt', sans-serif; }
+
+        #maintenanceBanner { display: none; background: #dc2626; color: white; text-align: center; padding: 10px; font-size: 14px; font-weight: 700; position: sticky; top: 0; z-index: 50; }
+        footer { margin-top: 30px; padding: 24px 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 13px; color: #64748b; line-height: 1.8; background: #fff; }
+
+        .admin-nav-tabs { display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 16px; padding-bottom: 8px; overflow-x: auto; }
+        .admin-tab-btn { padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; border: none; background: #f1f5f9; color: #64748b; cursor: pointer; white-space: nowrap; font-family: 'Prompt', sans-serif; }
+        .admin-tab-btn.active { background: #2563eb; color: white; }
+
+        .ticket-item-admin { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #f8fafc; font-size: 13px; line-height: 1.5; }
+        .reply-input-group { display: flex; gap: 8px; margin-top: 8px; }
+        .reply-input-group input { flex: 1; padding: 8px 12px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Prompt', 'Sarabun', sans-serif; }
+        .reply-input-group button { background: #059669; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Prompt', sans-serif; white-space: nowrap; }
+
+
+        /* Admin portal responsive layout and Thai typography fixes */
+        .admin-nav-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; overflow: visible; }
+        .admin-tab-btn { min-width: 0; width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: normal; line-height: 1.45; padding: 10px 8px; }
+        .admin-group input, .admin-group select, .admin-group textarea,
+        #adminPortalView input, #adminPortalView select, #adminPortalView textarea {
+            width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+            font-family: 'Prompt', 'Sarabun', sans-serif; line-height: 1.5;
+        }
+        .save-modal-btn, .close-modal-btn, .exit-admin-btn, .admin-icon-btn {
+            font-family: 'Prompt', 'Sarabun', sans-serif; line-height: 1.45; overflow-wrap: anywhere;
+        }
+        #adminPortalView button { max-width: 100%; }
+        #adminPortalView h2, #adminPortalView h3, #adminPortalView label,
+        #adminPortalView p, #adminPortalView span {
+            overflow-wrap: break-word; word-break: normal; line-height: 1.5;
+        }
+        #adminPortalView .admin-group > div[style*="display: flex"] { flex-wrap: wrap; }
+        @media (max-width: 480px) {
+            #adminPortalView { min-width: 0; }
+            #adminPortalView > div { padding: 14px !important; }
+            .admin-nav-tabs { grid-template-columns: 1fr 1fr; }
+            .admin-tab-btn { font-size: 11px; padding: 9px 6px; }
+            #adminPortalView .admin-group[style*="display: flex"] { flex-wrap: wrap; }
+            #adminPortalView .save-modal-btn { min-height: 42px; }
+        }
+        @media (min-width: 640px) {
+            .admin-nav-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+
+
+        /* ===== CRG UI refresh: cohesive, mobile-first design ===== */
+        :root {
+            --crg-blue: #1d4ed8;
+            --crg-blue-dark: #1e3a8a;
+            --crg-ink: #172033;
+            --crg-muted: #64748b;
+            --crg-border: #dbe4f0;
+            --crg-surface: #ffffff;
+            --crg-bg: #f3f6fb;
+            --crg-green: #059669;
+            --crg-radius: 18px;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--crg-bg);
+            color: var(--crg-ink);
+            font-family: 'Prompt','Sarabun',sans-serif;
+            line-height: 1.65;
+        }
+        button, input, textarea, select { font: inherit; }
+        button { transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease; }
+        button:active { transform: translateY(1px); }
+        input, select, textarea {
+            border-radius: 12px !important;
+            border: 1px solid #cbd5e1 !important;
+            background: #fff;
+            color: var(--crg-ink);
+            padding: 11px 13px !important;
+            min-height: 44px;
+            max-width: 100%;
+            line-height: 1.55 !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+        }
+        label { line-height: 1.55; }
+        header {
+            background: rgba(255,255,255,.94);
+            border-bottom: 1px solid rgba(203,213,225,.8);
+            box-shadow: 0 4px 20px rgba(15,23,42,.04);
+            padding-top: 14px;
+            padding-bottom: 14px;
+        }
+        .header-container { gap: 12px; }
+        .header-left { min-width: 0; }
+        .header-left h1 { font-size: clamp(14px, 2.2vw, 18px); line-height: 1.4; }
+        .logo-img-header { border-radius: 12px; background: #fff; }
+        main { padding-top: 22px; padding-bottom: 28px; }
+        .alert-box { border-radius: 16px; box-shadow: 0 5px 18px rgba(37,99,235,.05); }
+        .banner {
+            border-radius: 24px;
+            background: linear-gradient(125deg,#172554 0%,#1d4ed8 58%,#4338ca 100%);
+            box-shadow: 0 14px 32px rgba(30,64,175,.2);
+        }
+        .banner h2 { line-height: 1.45; }
+        .support-trigger-btn, .check-status-btn, .save-modal-btn, .close-modal-btn,
+        .logout-btn, .exit-admin-btn, .admin-icon-btn, .tab-btn, .admin-tab-btn {
+            border-radius: 12px;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: normal;
+            line-height: 1.5;
+        }
+        .support-trigger-btn:hover, .check-status-btn:hover, .save-modal-btn:hover,
+        .close-modal-btn:hover, .logout-btn:hover, .exit-admin-btn:hover { box-shadow: 0 6px 16px rgba(15,23,42,.12); }
+        .tab-nav { background: #e8eef8; border: 1px solid #dce5f2; padding: 7px; }
+        .tab-btn { min-width: 0; padding: 11px 12px; }
+        .tab-btn.active { color: #1d4ed8; box-shadow: 0 4px 14px rgba(15,23,42,.09); }
+        .category-header { border-radius: 15px; }
+        .step-card {
+            border: 1px solid #e3eaf3;
+            border-radius: 18px;
+            box-shadow: 0 5px 18px rgba(15,23,42,.035);
+            padding: clamp(14px, 3vw, 20px);
+        }
+        .step-card:hover { box-shadow: 0 9px 24px rgba(15,23,42,.07); }
+        .step-num { border-radius: 11px; }
+        footer { background: #fff; border-top: 1px solid #e2e8f0; padding: 26px 16px; }
+        footer p { overflow-wrap: break-word; line-height: 1.8; }
+        .modal { backdrop-filter: blur(5px); }
+        .modal-card {
+            border: 1px solid rgba(226,232,240,.9);
+            border-radius: 22px;
+            box-shadow: 0 24px 70px rgba(15,23,42,.24);
+        }
+        .admin-nav-tabs {
+            display: grid;
+            grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 9px;
+            border: 0;
+            padding: 0 0 14px;
+        }
+        .admin-tab-btn {
+            min-width: 0;
+            padding: 12px 10px;
+            background: #eef2f7;
+            border: 1px solid #e1e8f0;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .admin-tab-btn.active {
+            background: linear-gradient(135deg,#2563eb,#1d4ed8);
+            color: #fff;
+            border-color: #2563eb;
+            box-shadow: 0 6px 16px rgba(37,99,235,.2);
+        }
+        #adminPortalView .admin-group,
+        #adminPortalView > div > div,
+        #adminPortalView .p-4 {
+            border-radius: 16px;
+        }
+        #adminPortalView input, #adminPortalView select, #adminPortalView textarea {
+            display: block;
+            width: 100%;
+            min-width: 0;
+            margin-top: 5px;
+            margin-bottom: 9px;
+        }
+        #adminPortalView button { min-height: 42px; }
+        #adminPortalView .save-modal-btn { padding: 11px 14px; }
+        #adminPortalView h2, #adminPortalView h3, #adminPortalView p,
+        #adminPortalView label, #adminPortalView span {
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+        #maintenanceBanner { box-shadow: 0 3px 12px rgba(127,29,29,.15); }
+        #backToTopBtn { box-shadow: 0 8px 24px rgba(37,99,235,.3); }
+        @media (min-width: 640px) {
+            .admin-nav-tabs { grid-template-columns: repeat(4,minmax(0,1fr)); }
+            .admin-tab-btn { font-size: 13px; }
+        }
+        @media (max-width: 520px) {
+            header { padding-left: 10px; padding-right: 10px; }
+            .header-container { align-items: flex-start; }
+            .header-left { gap: 8px; }
+            .logo-img-header { width: 36px; height: 36px; }
+            .header-btns { gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+            .admin-icon-btn { width: 36px; height: 36px; }
+            .logout-btn, .exit-admin-btn { padding: 7px 9px; font-size: 11px; }
+            main { padding: 12px; }
+            .banner { padding: 18px; border-radius: 20px; }
+            .banner-action-btns { width: 100%; }
+            .banner-action-btns > * { max-width: 100%; }
+            .support-trigger-btn, .check-status-btn { flex: 1 1 100%; }
+            .tab-btn { font-size: 12px; padding: 10px 7px; }
+            .admin-nav-tabs { grid-template-columns: repeat(2,minmax(0,1fr)); }
+            .admin-tab-btn { font-size: 11px; padding: 10px 6px; }
+            .modal-card { padding: 18px; }
+            .modal-btns { flex-wrap: wrap; }
+            .modal-btns button { min-width: 0; }
+        }
+
+
+        /* Modern CRG confirmation dialog replacing browser-native confirm popups */
+        #crgConfirmOverlay { display:none; position:fixed; inset:0; z-index:1000000; background:rgba(15,23,42,.58); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); align-items:center; justify-content:center; padding:20px; }
+        #crgConfirmOverlay.is-open { display:flex; animation:crgFadeIn .18s ease-out; }
+        #crgConfirmCard { width:min(100%,420px); background:rgba(255,255,255,.98); border:1px solid rgba(226,232,240,.9); border-radius:26px; padding:26px 22px 20px; box-shadow:0 28px 90px rgba(15,23,42,.32); text-align:center; animation:crgPopIn .2s ease-out; }
+        #crgConfirmIcon { width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;border-radius:22px;background:#eaf2ff;color:#2563eb;font-size:30px; }
+        #crgConfirmTitle { color:#102b61;font-size:21px;font-weight:800;line-height:1.4;margin-bottom:9px; }
+        #crgConfirmMessage { color:#52627a;font-size:14px;line-height:1.8;overflow-wrap:anywhere;white-space:pre-line; }
+        #crgConfirmButtons { display:flex;gap:10px;margin-top:23px; }
+        #crgConfirmButtons button { flex:1;min-height:48px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;padding:10px 12px; }
+        #crgConfirmCancel { border:1px solid #cbd5e1;background:#fff;color:#334155; }
+        #crgConfirmOk { border:1px solid #1d4ed8;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 6px 15px rgba(37,99,235,.2); }
+        #crgConfirmOk.is-danger { border-color:#e11d48;background:linear-gradient(135deg,#f43f5e,#be123c);box-shadow:0 6px 15px rgba(225,29,72,.2); }
+        #crgConfirmButtons button:focus-visible { outline:3px solid #93c5fd;outline-offset:3px; }
+        @keyframes crgFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes crgPopIn { from { opacity:0;transform:translateY(8px) scale(.98) } to { opacity:1;transform:translateY(0) scale(1) } }
+        @media(max-width:420px) { #crgConfirmCard { padding:23px 18px 18px;border-radius:23px; } #crgConfirmTitle { font-size:19px; } #crgConfirmButtons button { min-height:46px; } }
+
+    /* CRG visual refresh — presentation-only overrides; login/Firebase logic unchanged */
+:root{--crg-ink:#17243b;--crg-muted:#66758b;--crg-line:#e1e8f2;--crg-blue:#1746a2;--crg-blue2:#2868d8;--crg-bg:#f3f6fb;--crg-card:#fff}
+body{background:var(--crg-bg);color:var(--crg-ink);font-family:Inter,"Noto Sans Thai",system-ui,-apple-system,sans-serif}
+#mainApp{background:linear-gradient(180deg,#eef4ff 0,#f6f8fc 260px,var(--crg-bg) 100%);min-height:100vh}
+.header-container{background:linear-gradient(120deg,#102a56 0%,#1746a2 58%,#2871cf 100%)!important;color:white!important;border:0!important;border-radius:0 0 26px 26px!important;box-shadow:0 12px 32px #163d7926!important;padding:18px clamp(14px,3vw,30px)!important}
+.header-container .sub-title{color:#dbeafe!important}
+#loggedUserDisplay{font-weight:800!important;color:#fff!important}
+#normalUserView,#adminPortalView{max-width:1180px;margin:22px auto!important;padding:clamp(12px,2vw,24px)!important}
+#adminPortalView{background:transparent!important}
+.admin-nav-tabs,.tab-nav{display:flex!important;gap:9px!important;flex-wrap:wrap!important;padding:10px!important;background:#e8eef8!important;border:1px solid #dce5f2!important;border-radius:18px!important;margin:0 0 20px!important}
+.admin-tab-btn,.tab-nav button{border:1px solid transparent!important;border-radius:12px!important;padding:11px 15px!important;font-weight:800!important;transition:all .18s ease!important}
+.admin-tab-btn.active,.tab-nav button.active{background:#fff!important;color:var(--crg-blue)!important;border-color:#cbdaf1!important;box-shadow:0 4px 12px #163d7914!important}
+#adminPortalView .admin-group,#adminPortalView .p-4.mb-5,#adminPortalView [class*="rounded-2xl"][class*=border]{background:var(--crg-card)!important;border:1px solid var(--crg-line)!important;border-radius:18px!important;box-shadow:0 5px 18px #18345d0a!important;padding:18px!important}
+#adminPortalView h2,#adminPortalView h3,#adminPortalView h4{color:#172f55!important;letter-spacing:-.015em}
+#adminPortalView input:not([type=checkbox]):not([type=radio]),#adminPortalView select,#adminPortalView textarea,.admin-group input,.admin-group select,.admin-group textarea{border:1px solid #d6e0ee!important;border-radius:11px!important;background:#fbfdff!important;padding:11px 12px!important;min-height:42px;outline:none;transition:border-color .15s,box-shadow .15s}
+#adminPortalView input:focus,#adminPortalView select:focus,#adminPortalView textarea:focus,.admin-group input:focus,.admin-group select:focus,.admin-group textarea:focus{border-color:#4e86df!important;box-shadow:0 0 0 3px #dbeafe!important;background:white!important}
+#adminPortalView button,.admin-group button{border-radius:11px;transition:transform .15s,filter .15s,box-shadow .15s}
+#adminPortalView button:hover,.admin-group button:hover{filter:brightness(1.03);box-shadow:0 4px 12px #173e7b12}
+#adminPortalView button:active,.admin-group button:active{transform:scale(.985)}
+#adminTotalVisits{font-variant-numeric:tabular-nums;font-size:clamp(26px,4vw,38px)!important;font-weight:900!important;color:#1746a2!important}
+#allEmployeeAccountsList,#adminTicketList,#visitLogsList,#bannedEmployeesList,#todayLoginLogs,#adminRoleAccountsList,#passwordResetRequestsList{display:grid;gap:10px}
+#allEmployeeAccountsList>*,#adminTicketList>*,#visitLogsList>*,#bannedEmployeesList>*,#todayLoginLogs>*,#adminRoleAccountsList>*,#passwordResetRequestsList>*{border-radius:13px!important;border:1px solid #e3eaf4!important;background:#fff!important;padding:13px!important}
+#crgConfirmCard{border-radius:22px!important;box-shadow:0 24px 80px #081a3766!important}
+button:focus-visible,a:focus-visible{outline:3px solid #93c5fd!important;outline-offset:2px}
+@media(max-width:640px){.header-container{border-radius:0 0 20px 20px!important;padding:14px!important}#normalUserView,#adminPortalView{margin:12px auto!important;padding:10px!important}.admin-nav-tabs,.tab-nav{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.admin-tab-btn,.tab-nav button{width:100%;padding:10px 8px!important;font-size:12px!important}#adminPortalView .admin-group,#adminPortalView .p-4.mb-5{padding:13px!important}}
+
+
+
+    /* CRG Dashboard Redesign — visual-only overrides; login and Firebase logic untouched */
+    #mainApp { background: #f3f7fc !important; color:#12315b; }
+    #mainApp header { background:linear-gradient(110deg,#062e62 0%,#0759b7 58%,#0b3970 100%) !important; border-bottom:0 !important; color:#fff; box-shadow:0 8px 24px rgba(8,45,91,.18); }
+    #mainApp .header-container { max-width:1440px !important; }
+    #mainApp .header-left h1, #mainApp .sub-title { color:#fff !important; }
+    #mainApp main { max-width:1440px !important; padding:24px !important; }
+    #mainApp .banner { background:linear-gradient(120deg,#06336a,#0875e8) !important; border-radius:22px !important; box-shadow:0 12px 28px rgba(15,85,170,.2) !important; }
+    #mainApp .tab-nav { background:#e3edf9 !important; border:1px solid #d2e2f5; border-radius:18px !important; padding:8px !important; }
+    #mainApp .tab-btn { border-radius:12px !important; color:#315579; }
+    #mainApp .tab-btn.active { color:#075fca !important; background:#fff !important; box-shadow:0 5px 15px rgba(19,67,120,.13) !important; }
+    #mainApp .category-header { background:linear-gradient(100deg,#e5f1ff,#f4f8ff) !important; border:1px solid #c8def8 !important; color:#084c9b !important; border-radius:14px !important; }
+    #mainApp .step-card, #mainApp .modal-card, #mainApp #adminPortalView > div { border:1px solid #dce8f6 !important; border-radius:18px !important; box-shadow:0 8px 24px rgba(30,75,125,.07) !important; }
+    #mainApp .step-card { padding:22px !important; }
+    #mainApp .step-num { border-radius:11px !important; background:linear-gradient(135deg,#087cf0,#0754bc) !important; }
+    #mainApp button { transition:transform .16s ease, box-shadow .16s ease, filter .16s ease; }
+    #mainApp button:hover { filter:brightness(1.03); }
+    #mainApp .admin-tab-btn { background:#edf4fc !important; color:#315579 !important; border:1px solid #d8e6f6 !important; border-radius:11px !important; }
+    #mainApp .admin-tab-btn.active { background:linear-gradient(120deg,#087cf0,#0754bc) !important; color:white !important; border-color:transparent !important; box-shadow:0 5px 12px rgba(7,94,190,.2); }
+    #mainApp .admin-group input, #mainApp .admin-group select, #mainApp .admin-group textarea, #mainApp #adminPortalView input, #mainApp #adminPortalView select, #mainApp #adminPortalView textarea { border:1px solid #cbdced !important; border-radius:11px !important; background:#fbfdff; min-height:42px; }
+    #mainApp .admin-group input:focus, #mainApp .admin-group select:focus, #mainApp .admin-group textarea:focus, #mainApp #adminPortalView input:focus, #mainApp #adminPortalView select:focus, #mainApp #adminPortalView textarea:focus { border-color:#1680ef !important; box-shadow:0 0 0 3px rgba(22,128,239,.12); }
+    #mainApp .save-modal-btn { background:linear-gradient(120deg,#087cf0,#0754bc) !important; border-radius:11px !important; box-shadow:0 4px 10px rgba(7,94,190,.16); }
+    #mainApp footer { background:#eaf2fc !important; color:#4d6682 !important; border-top:1px solid #d5e4f5 !important; }
+    @media(max-width:640px) {
+      #mainApp main { padding:12px !important; }
+      #mainApp .banner { padding:18px !important; border-radius:17px !important; }
+      #mainApp .step-card { padding:14px !important; }
+      #mainApp .tab-btn { min-width:calc(50% - 6px); white-space:normal; }
+      #mainApp .header-left h1 { font-size:14px !important; }
+    }
+
+    
+
+        /* ==========================================================
+           CRG MODERN CORPORATE UI — presentation only
+           Existing Firebase, authentication, roles and handlers stay intact.
+           ========================================================== */
+        :root {
+            --crg-navy: #12345b;
+            --crg-navy-deep: #0b2545;
+            --crg-blue: #1764c0;
+            --crg-blue-soft: #eaf3ff;
+            --crg-bg: #f4f7fb;
+            --crg-card: #ffffff;
+            --crg-text: #172b45;
+            --crg-muted: #66778d;
+            --crg-border: #dce5ef;
+            --crg-shadow: 0 10px 28px rgba(20, 48, 82, .07);
+        }
+        html { scroll-behavior: smooth; background: var(--crg-bg); }
+        body { background: var(--crg-bg) !important; color: var(--crg-text); font-family: 'Prompt','Sarabun',sans-serif; }
+        #loginScreen {
+            background: radial-gradient(ellipse at 15% 15%, rgba(48,119,203,.34), transparent 38%),
+                        radial-gradient(ellipse at 90% 85%, rgba(31,83,145,.30), transparent 40%),
+                        linear-gradient(145deg, #071d38 0%, #103b69 56%, #0b2b50 100%) !important;
+        }
+        #loginScreen > div {
+            max-width: 410px !important;
+            background: rgba(255,255,255,.98) !important;
+            border: 1px solid rgba(255,255,255,.72) !important;
+            border-radius: 25px !important;
+            box-shadow: 0 28px 75px rgba(0,0,0,.28) !important;
+        }
+        #loginScreen .login-logo {
+            width: 66px; height: 66px; padding: 5px; border-radius: 16px;
+            background: #fff; filter: none;
+        }
+        #loginScreen h2 { color: var(--crg-navy-deep) !important; font-size: 22px !important; }
+        #loginScreen .text-blue-600 { color: var(--crg-blue) !important; }
+        #loginScreen .login-input {
+            min-height: 46px; border: 1px solid #d5dfeb; border-radius: 12px;
+            background: #fbfdff; color: var(--crg-text); text-align: right;
+        }
+        #loginScreen .login-input:focus { border-color: #4388d8; box-shadow: 0 0 0 4px rgba(23,100,192,.12); }
+        #showLoginMode, #showRegisterMode { min-height: 43px; border-radius: 11px !important; }
+        #accountSubmitButton {
+            min-height: 48px; border-radius: 12px !important;
+            background: linear-gradient(110deg,#174f91,#176bc5) !important;
+            box-shadow: 0 8px 18px rgba(23,100,192,.20) !important;
+        }
+        #forgotPasswordRequestButton { border-color: #cfe0f4 !important; background: #f1f7ff !important; color: #18569a !important; }
+        #loadingScreen { background: rgba(7,29,56,.96) !important; }
+        #loadingScreen .spinner, #tabLoadingOverlay .small-spinner { border-top-color: #73b7ff !important; }
+        #mainApp { background: linear-gradient(180deg,#edf4fc 0,#f4f7fb 300px,var(--crg-bg) 100%) !important; }
+        #mainApp header {
+            background: linear-gradient(110deg,#0b2c50 0%,#124b83 58%,#1764a8 100%) !important;
+            border: 0 !important; box-shadow: 0 8px 26px rgba(9,43,78,.18) !important;
+            padding: 12px 18px !important;
+        }
+        #mainApp .header-container { max-width: 1440px !important; min-height: 58px; }
+        #mainApp .header-left h1, #mainApp .sub-title, #mainApp #loggedUserDisplay { color: #fff !important; }
+        #mainApp .sub-title { opacity: .82; }
+        #mainApp .logo-img-header { width: 46px; height: 46px; border: 1px solid rgba(255,255,255,.35); border-radius: 13px; background: #fff; padding: 2px; }
+        #mainApp .admin-icon-btn { background: rgba(255,255,255,.15) !important; border: 1px solid rgba(255,255,255,.22); box-shadow: none !important; }
+        #mainApp .logout-btn { background: rgba(255,255,255,.12) !important; color: #fff !important; border: 1px solid rgba(255,255,255,.28) !important; }
+        #mainApp .exit-admin-btn { background: #fff !important; color: #9f2635 !important; box-shadow: none !important; }
+        #mainApp main { max-width: 1440px !important; padding: clamp(14px,2.5vw,30px) !important; }
+        #normalUserView, #adminPortalView { max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; }
+        #normalUserView .alert-box { border: 1px solid #cfe0f4 !important; border-width: 1px !important; background: #f2f7ff !important; color: #244d7a !important; border-radius: 14px !important; }
+        #normalUserView .banner {
+            background: linear-gradient(118deg,#10345c 0%,#15569a 62%,#1d70bb 100%) !important;
+            border: 1px solid rgba(255,255,255,.12); border-radius: 22px !important;
+            box-shadow: 0 15px 32px rgba(18,66,113,.17) !important; padding: clamp(20px,3vw,30px) !important;
+        }
+        #normalUserView .banner h2 { font-size: clamp(19px,2.5vw,25px) !important; }
+        #normalUserView .banner p { color: #e6f1ff; }
+        .support-trigger-btn, .check-status-btn { min-height: 43px; border-radius: 11px !important; }
+        .support-trigger-btn { color: #174f91 !important; }
+        .check-status-btn { background: #d9edff !important; color: #124a80 !important; }
+        #globalVisitBadge { color: #fff !important; }
+        #dynamicTabNav, .tab-nav {
+            display: flex !important; flex-wrap: wrap !important; gap: 9px !important;
+            padding: 10px !important; background: #e7eef7 !important;
+            border: 1px solid #d9e4f0 !important; border-radius: 16px !important;
+            margin: 0 0 18px !important;
+        }
+        .tab-btn {
+            flex: 1 1 150px; min-height: 44px; padding: 10px 15px !important;
+            background: #f8fbff !important; color: #39536f !important;
+            border: 1px solid #d9e4f0 !important; border-radius: 11px !important;
+            font-weight: 700 !important;
+        }
+        .tab-btn.active {
+            background: #fff !important; color: #155da8 !important;
+            border-color: #b9d3ef !important; box-shadow: 0 4px 12px rgba(22,75,130,.10) !important;
+        }
+        .category-header {
+            background: linear-gradient(105deg,#e8f2ff,#f5f9ff) !important;
+            color: #174b82 !important; border: 1px solid #cfe0f2 !important;
+            border-radius: 14px !important; padding: 15px 17px !important;
+            font-weight: 700; margin-bottom: 14px;
+        }
+        .step-card {
+            background: #fff !important; border: 1px solid var(--crg-border) !important;
+            border-radius: 17px !important; box-shadow: var(--crg-shadow) !important;
+            padding: clamp(15px,2.5vw,23px) !important; margin-bottom: 14px;
+        }
+        .step-header { gap: 13px !important; }
+        .step-num { background: linear-gradient(145deg,#2879ca,#15549a) !important; box-shadow: 0 4px 10px rgba(21,84,154,.17); }
+        .step-title { color: #183b60 !important; font-weight: 700 !important; }
+        .step-desc { color: #52677f !important; line-height: 1.8 !important; }
+        .img-container { margin-top: 16px !important; border-radius: 14px !important; overflow: hidden; background: #f1f5f9; }
+        .img-container img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+        #adminPortalView > div:first-child {
+            background: transparent !important; border: 0 !important; box-shadow: none !important;
+            padding: 0 !important; margin: 0 !important;
+        }
+        #adminPortalView > div:first-child > div:first-child {
+            background: #fff; border: 1px solid var(--crg-border); border-radius: 18px;
+            padding: 20px 22px; box-shadow: var(--crg-shadow); margin-bottom: 16px !important;
+        }
+        #adminPortalView h2 { color: #153b63 !important; font-size: clamp(18px,2.2vw,23px) !important; }
+        #adminPortalView .admin-nav-tabs {
+            display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr));
+            gap: 9px !important; padding: 9px !important; margin-bottom: 17px !important;
+            background: #e8eff8 !important; border: 1px solid #d9e4f0 !important; border-radius: 15px !important;
+        }
+        #adminPortalView .admin-tab-btn {
+            min-height: 45px; padding: 10px 12px !important; border-radius: 11px !important;
+            background: #f8fbff !important; border: 1px solid #d8e3ef !important;
+            color: #3b5876 !important; font-weight: 700 !important;
+        }
+        #adminPortalView .admin-tab-btn.active {
+            color: #fff !important; background: linear-gradient(110deg,#15599c,#2476c3) !important;
+            border-color: transparent !important; box-shadow: 0 5px 13px rgba(21,89,156,.18) !important;
+        }
+        #adminPortalView .admin-group, #adminPortalView section.admin-group,
+        #adminPortalView #admSubTab-general > div, #adminPortalView #admSubTab-categories > div > div > div,
+        #adminPortalView #admSubTab-categories > div > div:last-child,
+        #adminPortalView #admSubTab-footer > div, #adminPortalView #admSubTab-tickets > div {
+            border-radius: 15px !important;
+        }
+        #adminPortalView input:not([type=checkbox]):not([type=radio]):not([type=file]),
+        #adminPortalView select, #adminPortalView textarea {
+            border: 1px solid #d4dfeb !important; border-radius: 10px !important;
+            background: #fbfdff !important; color: #1d344f !important;
+            min-height: 43px; padding: 10px 12px !important;
+        }
+        #adminPortalView input:focus, #adminPortalView select:focus, #adminPortalView textarea:focus {
+            border-color: #4b8bd0 !important; box-shadow: 0 0 0 3px rgba(36,112,190,.12) !important; outline: none;
+        }
+        #adminPortalView button, .modal-card button { border-radius: 10px; }
+        #adminPortalView .save-modal-btn, .modal-card .save-modal-btn {
+            background: linear-gradient(110deg,#175a9d,#2476c3); color: #fff;
+            border: 0; min-height: 42px; box-shadow: 0 4px 11px rgba(21,89,156,.13);
+        }
+        #adminPortalView #crgMigrationPanel { background: #f5f9ff !important; border-color: #cbdff4 !important; }
+        #adminPortalView #allEmployeeAccountsList > *, #adminPortalView #adminTicketList > *,
+        #adminPortalView #visitLogsList > *, #adminPortalView #bannedEmployeesList > *,
+        #adminPortalView #todayLoginLogs > *, #adminPortalView #adminRoleAccountsList > *,
+        #adminPortalView #passwordResetRequestsList > * {
+            border: 1px solid #e0e8f1 !important; border-radius: 12px !important;
+            background: #fff !important; padding: 12px !important;
+        }
+        .modal { background: rgba(8,27,49,.58) !important; backdrop-filter: blur(6px); }
+        .modal-card { border: 1px solid #dce5ef !important; border-radius: 19px !important; box-shadow: 0 24px 70px rgba(7,28,52,.25) !important; }
+        footer { background: #eaf1f8 !important; border-top: 1px solid #d9e4ef !important; color: #526a83 !important; }
+        #backToTopBtn { background: #155b9e !important; box-shadow: 0 8px 22px rgba(21,91,158,.25) !important; }
+        button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 3px solid rgba(66,139,211,.55) !important; outline-offset: 2px;
+        }
+        @media (min-width: 760px) {
+            #adminPortalView .admin-nav-tabs { grid-template-columns: repeat(5,minmax(0,1fr)) !important; }
+        }
+        @media (max-width: 640px) {
+            #mainApp header { padding: 10px 12px !important; }
+            #mainApp .header-container { gap: 8px; }
+            #mainApp .header-left { gap: 8px; }
+            #mainApp .logo-img-header { width: 39px; height: 39px; }
+            #mainApp .header-left h1 { font-size: 13px !important; }
+            #mainApp .sub-title { font-size: 10px !important; }
+            #mainApp .header-btns { gap: 5px; }
+            #mainApp .admin-icon-btn { width: 34px; height: 34px; font-size: 15px; }
+            #mainApp .logout-btn, #mainApp .exit-admin-btn { padding: 7px 9px; font-size: 11px; }
+            #mainApp main { padding: 12px !important; }
+            #normalUserView .banner { padding: 18px !important; border-radius: 17px !important; }
+            #normalUserView .banner-action-btns { width: 100%; }
+            #normalUserView .banner-action-btns > button { flex: 1 1 140px; }
+            #dynamicTabNav { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px !important; }
+            .tab-btn { min-width: 0 !important; width: 100%; padding: 9px 7px !important; font-size: 12px !important; }
+            .step-card { padding: 14px !important; }
+            #adminPortalView > div:first-child > div:first-child { padding: 15px !important; }
+            #adminPortalView .admin-nav-tabs { grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 7px !important; }
+            #adminPortalView .admin-tab-btn { font-size: 11px !important; padding: 9px 6px !important; }
+            #adminPortalView .admin-group, #adminPortalView .p-4 { padding: 13px !important; }
+            #loginScreen > div { margin-top: auto; margin-bottom: auto; }
+        }
+        @media (max-width: 360px) {
+            #mainApp .header-left h1 { max-width: 135px; }
+            #mainApp .exit-admin-btn { max-width: 95px; white-space: normal; }
+            #dynamicTabNav, #adminPortalView .admin-nav-tabs { grid-template-columns: 1fr 1fr !important; }
+        }
+
+</style>
+
+    <style id="crgPremiumLoadingV13">
+        /* CRG Premium Loading — presentation only; existing loading logic is retained */
+        #loadingScreen {
+            padding: 24px !important;
+            box-sizing: border-box;
+            background:
+                radial-gradient(ellipse at 50% 8%, rgba(65,145,220,.20), transparent 48%),
+                linear-gradient(145deg, #f8fbff 0%, #edf4fc 52%, #e5eef9 100%) !important;
+            color: #173653 !important;
+            overflow: auto;
+        }
+        #loadingScreen .crg-loading-card {
+            width: min(100%, 360px);
+            box-sizing: border-box;
+            padding: 34px 26px 26px;
+            border: 1px solid rgba(255,255,255,.95);
+            border-radius: 28px;
+            background: rgba(255,255,255,.88);
+            box-shadow: 0 24px 70px rgba(22,65,108,.14), 0 3px 12px rgba(22,65,108,.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        #loadingScreen .crg-loading-logo-wrap {
+            width: 92px;
+            height: 92px;
+            display: grid;
+            place-items: center;
+            border-radius: 25px;
+            padding: 7px;
+            background: linear-gradient(145deg,#fff,#edf5ff);
+            border: 1px solid #e2edf9;
+            box-shadow: 0 10px 28px rgba(30,91,150,.12);
+            margin-bottom: 17px;
+        }
+        #loadingScreen .crg-loading-logo {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 18px;
+        }
+        #loadingScreen .crg-loading-logo-fallback {
+            display: none;
+            width: 100%; height: 100%;
+            place-items: center;
+            border-radius: 18px;
+            background: linear-gradient(145deg,#123b65,#2375b9);
+            color: #fff;
+            font-size: 25px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+        #loadingScreen .crg-loading-brand {
+            color: #5680a8;
+            font-size: 9px;
+            line-height: 1.4;
+            letter-spacing: 2.1px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        #loadingScreen h3 {
+            margin: 0 !important;
+            color: #123b65 !important;
+            font-size: 20px !important;
+            line-height: 1.4;
+            font-weight: 800 !important;
+        }
+        #loadingScreen .crg-loading-detail {
+            min-height: 38px;
+            max-width: 270px;
+            margin: 9px 0 20px !important;
+            color: #6b8198 !important;
+            font-size: 12px !important;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+        #loadingScreen .crg-loading-progress {
+            position: relative;
+            width: 100%;
+            height: 5px;
+            overflow: hidden;
+            border-radius: 99px;
+            background: #e6eef7;
+        }
+        #loadingScreen .crg-loading-progress span {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: 38%;
+            border-radius: inherit;
+            background: linear-gradient(90deg,#2469a6,#65b5ee);
+            box-shadow: 0 0 14px rgba(48,132,198,.28);
+            animation: crgLoadingTravel 1.45s ease-in-out infinite;
+        }
+        #loadingScreen .crg-loading-footnote {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 20px;
+            color: #91a5b9;
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 1.55px;
+        }
+        #loadingScreen .crg-loading-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #2d8a67;
+            box-shadow: 0 0 0 4px rgba(45,138,103,.10);
+        }
+        @keyframes crgLoadingTravel {
+            0% { transform: translateX(-110%); }
+            55% { transform: translateX(145%); }
+            100% { transform: translateX(280%); }
+        }
+        #tabLoadingOverlay {
+            background: rgba(10,35,62,.24) !important;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        #tabLoadingOverlay .crg-tab-loading-card {
+            min-width: 210px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 22px 26px;
+            border: 1px solid rgba(255,255,255,.9);
+            border-radius: 20px;
+            background: rgba(255,255,255,.96);
+            color: #17466f;
+            box-shadow: 0 16px 45px rgba(15,45,75,.18);
+            font-size: 13px;
+            font-weight: 800;
+        }
+        #tabLoadingOverlay .crg-tab-loading-card small {
+            color: #8195a9;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        #tabLoadingOverlay .crg-tab-loader {
+            width: 30px; height: 30px;
+            border: 3px solid #dce9f6;
+            border-top-color: #2678b8;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @media (max-width: 420px) {
+            #loadingScreen { padding: 18px !important; }
+            #loadingScreen .crg-loading-card { padding: 29px 21px 23px; border-radius: 24px; }
+            #loadingScreen .crg-loading-logo-wrap { width: 82px; height: 82px; }
+            #loadingScreen h3 { font-size: 18px !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #loadingScreen .crg-loading-progress span,
+            #tabLoadingOverlay .crg-tab-loader { animation-duration: 3s; }
+        }
+    </style>
+
+    <style id="crgPerformancePolishV14">
+        /* v1.4: visual/performance polish only — no changes to Firebase or application workflows */
+        html { scroll-padding-top: 76px; }
+        body { min-height: 100vh; min-height: 100dvh; }
+        img { max-width: 100%; }
+        .img-container img {
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        button, a, input, select, textarea { touch-action: manipulation; }
+        button:focus-visible, a:focus-visible, input:focus-visible,
+        select:focus-visible, textarea:focus-visible {
+            outline: 3px solid rgba(37, 99, 235, .32);
+            outline-offset: 2px;
+        }
+        #loadingScreen {
+            padding-top: max(24px, env(safe-area-inset-top)) !important;
+            padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+        }
+        @media (max-width: 640px) {
+            /* Reduce costly blur/shadow painting on mid-range and older phones. */
+            #mainApp header,
+            #loadingScreen .crg-loading-card,
+            #tabLoadingOverlay,
+            .modal,
+            #crgConfirmOverlay {
+                -webkit-backdrop-filter: none !important;
+                backdrop-filter: none !important;
+            }
+            #loadingScreen .crg-loading-card {
+                box-shadow: 0 12px 34px rgba(22, 65, 108, .11), 0 2px 8px rgba(22, 65, 108, .04);
+            }
+            .step-card, .modal-card { box-shadow: 0 4px 14px rgba(15, 45, 75, .055) !important; }
+            #mainApp header { padding-top: max(12px, env(safe-area-inset-top)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto !important; }
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+
+</head>
+<body>
+
+
+    <div id="crgConfirmOverlay" role="dialog" aria-modal="true" aria-labelledby="crgConfirmTitle" aria-describedby="crgConfirmMessage">
+      <div id="crgConfirmCard">
+        <div id="crgConfirmIcon" aria-hidden="true">✦</div>
+        <h2 id="crgConfirmTitle">ยืนยันการทำรายการ</h2>
+        <p id="crgConfirmMessage"></p>
+        <div id="crgConfirmButtons">
+          <button type="button" id="crgConfirmCancel">ยกเลิก</button>
+          <button type="button" id="crgConfirmOk">ยืนยัน</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="maintenanceBanner">⚠️ ระบบอยู่ในระหว่างดำเนินการปิดปรับปรุงชั่วคราว</div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="fixed inset-0 w-full h-full bg-gradient-to-br from-slate-900 via-blue-950 to-red-950 z-[99999] flex flex-col items-center justify-center p-5 text-center">
+        <!-- Floating Glow Card Container -->
+        <div class="relative w-full max-w-sm bg-white/95 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/20 transition-all transform duration-300">
+            <!-- CRG Logo Image -->
+            <img src="https://i.postimg.cc/fLLf68d4/Screenshot-2026-1012-223219.png" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='18' fill='%230f3b70'/%3E%3Ctext x='60' y='69' font-family='Arial,sans-serif' font-size='35' font-weight='700' text-anchor='middle' fill='white'%3ECRG%3C/text%3E%3C/svg%3E'" alt="CRG Logo" class="login-logo" decoding="async" fetchpriority="high">
+            
+            <!-- Welcome Headings -->
+            <h2 class="text-xl font-bold text-slate-800 mb-1 leading-tight">
+                ยินดีต้อนรับ
+            </h2>
+            <p class="text-sm font-semibold text-blue-600 mb-6">
+                คู่มือการใช้แอป @Work
+            </p>
+
+            <!-- Account access form -->
+            <div class="space-y-3 text-left">
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="showLoginMode" type="button" onclick="setAccountMode('login')" class="py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white">มีบัญชีแล้ว</button>
+                    <button id="showRegisterMode" type="button" onclick="setAccountMode('register')" class="py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-700">สร้างบัญชีใหม่</button>
+                </div>
+                <div id="registerFields" style="display:none">
+                    <label for="employeeFirstName" class="block text-xs font-semibold text-slate-500 mb-1">ชื่อ</label>
+                    <input type="text" id="employeeFirstName" autocomplete="given-name" class="login-input" placeholder="ชื่อจริง">
+                    <label for="employeeLastName" class="block text-xs font-semibold text-slate-500 mb-1">นามสกุล</label>
+                    <input type="text" id="employeeLastName" autocomplete="family-name" class="login-input" placeholder="นามสกุล">
+                    <label for="employeeCode" class="block text-xs font-semibold text-slate-500 mb-1">รหัสพนักงาน</label>
+                    <input type="text" id="employeeCode" autocomplete="off" class="login-input" placeholder="รหัสพนักงาน">
+                </div>
+                <label for="accountEmail" class="block text-xs font-semibold text-slate-500 mb-1">อีเมล</label>
+                <input type="email" id="accountEmail" autocomplete="username" class="login-input" placeholder="อีเมลสำหรับบัญชี">
+                <label for="accountPassword" class="block text-xs font-semibold text-slate-500 mb-1">รหัสผ่าน</label>
+                <input type="password" id="accountPassword" autocomplete="current-password" class="login-input" placeholder="อย่างน้อย 6 ตัวอักษร">
+                <button id="forgotPasswordRequestButton" type="button" onclick="openForgotPasswordRequest()" style="width:100%;margin:8px 0 12px;padding:9px;border:1px solid #bfdbfe;border-radius:10px;color:#1d4ed8;background:#eff6ff;font-size:13px;font-weight:700;">ลืมรหัสผ่าน? ส่งคำขอให้ทีมงานตรวจสอบ</button>
+                <div id="forgotPasswordRequestPanel" style="display:none;text-align:left;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:12px;margin-bottom:12px;">
+                    <p style="font-size:12px;color:#475569;margin-bottom:8px;">กรอกข้อมูลเพื่อให้ทีมงานตรวจสอบบัญชี ระบบจะไม่ขอหรือแสดงรหัสผ่านเดิม ทีมงานจะแจ้งขั้นตอนตั้งรหัสผ่านใหม่หลังตรวจสอบ</p>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="resetEmployeeName">ชื่อ-นามสกุล</label><input id="resetEmployeeName" class="login-input" placeholder="ชื่อและนามสกุล" autocomplete="name">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="resetEmployeeCode">รหัสพนักงาน</label><input id="resetEmployeeCode" class="login-input" placeholder="รหัสพนักงาน" autocomplete="off">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1" for="resetEmployeeEmail">อีเมลบัญชี</label><input id="resetEmployeeEmail" type="email" class="login-input" placeholder="อีเมลที่ใช้เข้าสู่ระบบ" autocomplete="email">
+                    <button type="button" onclick="submitPasswordResetRequest()" class="w-full py-3 px-4 bg-emerald-600 text-white font-bold rounded-xl mt-2">ส่งคำขอให้ทีมงานตรวจสอบ</button>
+                    <div id="resetRequestStatus" role="status" style="font-size:12px;margin-top:8px;color:#475569;"></div>
+                </div>
+                <button id="accountSubmitButton" type="button" class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-bold text-base rounded-xl shadow-lg active:scale-[0.98] transition-all cursor-pointer" onclick="handleAccountSubmit()">เข้าสู่ระบบ</button>
+                <div id="loginBanWarning" role="alert" aria-live="polite" style="display:none;margin-top:12px;padding:10px 12px;border-radius:12px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;font-weight:600;text-align:center;"></div>
+                <p class="text-[11px] text-slate-500 text-center">ระบบจะจดจำการเข้าสู่ระบบบนเครื่องนี้ จนกว่าจะออกจากระบบหรือข้อมูลเบราว์เซอร์ถูกล้าง</p>
+            </div>
+
+            <!-- Footer Badge Notice -->
+            <div class="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-400">
+                เซ็นทรัล เรสตอรองส์ กรุ๊ป (CRG)
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium CRG Loading Screen -->
+    <div id="loadingScreen" role="status" aria-live="polite" aria-label="กำลังโหลดระบบ CRG">
+        <div class="crg-loading-card">
+            <div class="crg-loading-logo-wrap">
+                <img class="crg-loading-logo" src="https://i.postimg.cc/fLLf68d4/Screenshot-2026-1012-223219.png"
+                     onerror="this.onerror=null;this.style.display='none';this.nextElementSibling.style.display='grid';"
+                     alt="CRG Logo" decoding="async" fetchpriority="high">
+                <div class="crg-loading-logo-fallback" aria-hidden="true">CRG</div>
+            </div>
+            <div class="crg-loading-brand">CENTRAL RESTAURANTS GROUP</div>
+            <h3>กำลังเข้าสู่ระบบ CRG...</h3>
+            <p class="crg-loading-detail">กำลังโหลดข้อมูลผู้ใช้งานและซิงค์ข้อมูลผ่านระบบคลาวด์</p>
+            <div class="crg-loading-progress" aria-hidden="true"><span></span></div>
+            <div class="crg-loading-footnote"><span class="crg-loading-dot"></span> CRG EMPLOYEE MANUAL</div>
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="mainApp">
+        <header>
+        <div class="header-container">
+            <div class="header-left">
+                <img src="https://i.postimg.cc/fLLf68d4/Screenshot-2026-1012-223219.png" onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='18' fill='%230f3b70'/%3E%3Ctext x='60' y='69' font-family='Arial,sans-serif' font-size='35' font-weight='700' text-anchor='middle' fill='white'%3ECRG%3C/text%3E%3C/svg%3E'" alt="CRG Logo" class="logo-img-header" decoding="async">
+                <div>
+                    <h1 class="flex items-center">
+                        คู่มือพนักงานในเครือ CRG
+                        <span id="adminBadge" class="admin-mode-badge">ADMIN MODE</span>
+                    </h1>
+                    <p class="sub-title" id="loggedUserDisplay">เซ็นทรัล เรสตอรองส์ กรุ๊ป</p>
+                </div>
+            </div>
+            <div class="header-btns">
+                <button id="refreshBtn" class="admin-icon-btn" style="background: #0284c7; box-shadow: 0 2px 6px rgba(2,132,199,0.3);" onclick="handleRefreshData()" title="รีเฟรชข้อมูล">🔄</button>
+                <button id="adminGearBtn" class="admin-icon-btn" onclick="openAdminPasswordModal()" title="เข้าสู่ระบบผู้ดูแล">⚙️</button>
+                <button id="exitAdminBtn" class="exit-admin-btn" onclick="handleAdminLogout()">🚪 ออกจากระบบแอดมิน</button>
+                <button class="logout-btn" onclick="handleLogout()">ออก</button>
+            </div>
+        </div>
+    </header>
+
+        <!-- Fullscreen Tab Loading Overlay -->
+        <div id="tabLoadingOverlay" role="status" aria-live="polite">
+            <div class="crg-tab-loading-card">
+                <span class="crg-tab-loader" aria-hidden="true"></span>
+                <span>กำลังโหลดเนื้อหาคู่มือ...</span>
+                <small>กรุณารอสักครู่</small>
+            </div>
+        </div>
+
+        <main>
+            <!-- Normal User Main View -->
+            <div id="normalUserView">
+                <div class="alert-box">
+                    <div style="font-size: 18px;">⚠️</div>
+                    <div><strong>คำแนะนำ:</strong> อ่านให้ครบหรือดูให้ครบ เพื่อเป็นแนวทางปฏิบัติงานประจำสาขา</div>
+                </div>
+
+                <div class="banner">
+                    <div>
+                        <h2>ระบบคู่มือการใช้งาน @Work (CRG)</h2>
+                        <p>รวมขั้นตอนการใช้แอป, สลิปเงินเดือน, การขอเปลี่ยนกะ และรับรองเวลา</p>
+                        <div style="font-size: 13px; opacity: 0.95; margin-top: 8px;">
+                            🌐 สถิติการเข้าชมระบบรวม (คลาวด์): <span id="globalVisitBadge" class="font-bold text-yellow-300">กำลังโหลด...</span> ครั้ง
+                        </div>
+                    </div>
+                    <div class="banner-action-btns">
+                        <button type="button" class="support-trigger-btn" onclick="openSupportModal()">💬 แจ้งปัญหา/สอบถาม</button>
+                        <button type="button" class="check-status-btn" onclick="openCheckStatusModal()">🔍 ดูคำตอบแอดมิน</button>
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl text-white text-[11px] font-medium shadow-sm">
+                            <svg class="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span id="displayUpdateDateText">อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Navigation Tabs Header -->
+                <div id="dynamicTabNav" class="tab-nav"></div>
+
+                <!-- Dynamic Category Content Areas with Loader Wrapper -->
+                <div id="categoryContainerWrapper" style="position: relative;">
+                    <div id="dynamicCategoryContents"></div>
+                </div>
+            </div>
+
+            <!-- Dedicated Admin System Portal View -->
+            <div id="adminPortalView" style="display: none;">
+                <div style="background: white; padding: 20px; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
+                        <div>
+                            <h2 style="font-size: 18px; font-weight: 800; color: #0f172a;">🛠️ ระบบจัดการหลังบ้านผู้ดูแลระบบ (CRG Admin Portal)</h2>
+                            <p style="font-size: 13px; color: #64748b; margin-top: 2px;">ยินดีต้อนรับแอดมิน: <span id="adminActiveUsername" style="font-weight: 700; color: #2563eb;">-</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Admin Navigation Sub-Tabs -->
+                    <div class="admin-nav-tabs">
+                        <button type="button" class="admin-tab-btn active" id="admTabBtn-general" onclick="switchAdminSubTab('general')">1. สถิติ/ระบบ</button>
+                        <button type="button" class="admin-tab-btn" id="admTabBtn-categories" onclick="switchAdminSubTab('categories')">2. จัดการหมวดหมู่/เนื้อหา</button>
+                        <button type="button" class="admin-tab-btn" id="admTabBtn-footer" onclick="switchAdminSubTab('footer')">3. ข้อมูลส่วนท้ายและวันที่</button>
+                        <button type="button" class="admin-tab-btn" id="admTabBtn-tickets" onclick="switchAdminSubTab('tickets')">4. ตอบคำถามพนักงาน (<span id="ticketCountBadge">0</span>)</button>
+                        <button type="button" class="admin-tab-btn" id="admTabBtn-employees" onclick="switchAdminSubTab('employees'); loadAllEmployeeAccounts()">6. รายชื่อพนักงาน</button>
+                    </div>
+
+                    <!-- Built-in data migration tools: export from old Firebase project, then import into the new project. -->
+                    <section class="p-4 mb-5 rounded-2xl border border-amber-300 bg-amber-50" id="crgMigrationPanel">
+                        <h3 class="font-bold text-slate-900 mb-2">ย้ายข้อมูล Firebase ระหว่างโปรเจกต์</h3>
+                        <p class="text-sm text-slate-700 mb-3">ใช้ปุ่มสำรองข้อมูลเพื่อดาวน์โหลดข้อมูลจากโปรเจกต์ที่ไฟล์นี้เชื่อมต่ออยู่ จากนั้นเปลี่ยน Firebase config ไปยังอีกโปรเจกต์ เปิดเว็บนี้ใหม่ แล้วนำไฟล์ JSON เข้ามา ข้อมูลเดิมจะไม่ถูกลบ</p>
+                        <div class="flex flex-col md:flex-row gap-2">
+                            <button type="button" id="crgExportDataBtn" class="save-modal-btn">ดาวน์โหลดข้อมูล Firestore (JSON)</button>
+                            <label class="save-modal-btn" style="display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">
+                                เลือกไฟล์ JSON เพื่อนำเข้าข้อมูล
+                                <input type="file" id="crgImportDataFile" accept="application/json,.json" style="display:none">
+                            </label>
+                        </div>
+                        <p id="crgMigrationStatus" class="text-sm mt-3" role="status"></p>
+                        <p class="text-xs text-amber-900 mt-2">หมายเหตุ: เครื่องมือนี้ย้ายเฉพาะ Firestore ไม่ย้ายรหัสผ่าน/บัญชี Firebase Authentication ต้องใช้ผู้ดูแลที่มีสิทธิ์อ่านและเขียนข้อมูลในทั้งสองโปรเจกต์</p>
+                    </section>
+
+                    <!-- Sub Tab 1: General & Maintenance & Visitor Log -->
+                    <div id="admSubTab-general">
+                        <section id="adminRoleManager" class="admin-group" style="margin-bottom:14px;background:#eef2ff;padding:14px;border:1px solid #c7d2fe;border-radius:14px;display:none;">
+                            <label style="font-size:14px;color:#3730a3;">👑 จัดการสิทธิ์แอดมินรายบัญชี</label>
+                            <p style="font-size:12px;color:#475569;margin:6px 0 10px;">เฉพาะแอดมินหลักเท่านั้นที่เพิ่ม/ถอดสิทธิ์แอดมินได้ บัญชีจะผูกกับ UID Firebase ไม่ใช้รหัสแอดมินซ้ำ</p>
+                            <button type="button" class="save-modal-btn" onclick="loadAdminRoleAccounts()">🔄 โหลดรายชื่อบัญชี</button>
+                            <div id="adminRoleAccountsList" style="margin-top:10px;display:grid;gap:8px;"></div>
+                        </section>
+                        <section class="admin-group" style="margin-bottom:14px;background:#fff7ed;padding:14px;border:1px solid #fed7aa;border-radius:14px;">
+                            <label style="font-size:14px;color:#9a3412;">🔐 คำขอลืมรหัสผ่านพนักงาน</label>
+                            <p style="font-size:12px;color:#7c2d12;margin:6px 0 10px;">ตรวจชื่อและรหัสพนักงานก่อนส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลบัญชี ระบบจะไม่เปิดเผยรหัสผ่านเดิม</p>
+                            <button type="button" class="save-modal-btn" style="background:#ea580c;" onclick="loadPasswordResetRequests()">โหลดคำขอลืมรหัสผ่าน</button>
+                            <div id="passwordResetRequestsList" style="margin-top:10px;display:grid;gap:8px;"></div>
+                        </section>
+                        <div class="admin-group" style="background: #f8fafc; padding: 14px; border-radius: 14px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
+                            <label style="font-size: 14px;">🔴 โหมดปิดปรับปรุงระบบ (Maintenance Mode)</label>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button type="button" class="save-modal-btn" style="background: #dc2626;" onclick="setMaintenance(true)">เปิดปรับปรุง</button>
+                                <button type="button" class="save-modal-btn" style="background: #059669;" onclick="setMaintenance(false)">ปิดปรับปรุง (ปกติ)</button>
+                            </div>
+                        </div>
+
+                        <div class="admin-group" style="background: #eff6ff; padding: 14px; border-radius: 14px; border: 1px solid #bfdbfe; margin-top: 10px;">
+                            <label style="font-size: 14px; color: #1e40af;">📊 สถิติการเข้าดูของผู้ใช้งานทั้งหมด (Global Cloud View Log)</label>
+                            <div style="font-size: 20px; font-weight: 800; color: #1e3a8a; margin-top: 4px;">
+                                รวมทั้งสิ้น: <span id="adminTotalVisits">0</span> ครั้ง
+                            </div>
+                            <div style="max-height: 160px; overflow-y: auto; font-size: 12px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; background: white; line-height: 1.6;" id="visitLogsList">
+                                กำลังโหลดบันทึกการเข้าชม...
+                            </div>
+                            <button type="button" class="save-modal-btn" style="background:#dc2626;margin-top:10px;width:100%;" onclick="clearCloudVisitLogs()">🗑️ ล้างบันทึกการเข้าชมบนคลาวด์ทั้งหมด</button>
+                            <p style="font-size:11px;color:#b91c1c;margin-top:6px;">ลบเฉพาะประวัติการเข้าชม ไม่ลบคู่มือ รายชื่อที่ถูกแบน หรือคำถามพนักงาน</p>
+                        </div>
+
+                        <div class="admin-group" style="margin-top:14px;background:#fff7ed;padding:14px;border-radius:14px;border:1px solid #fed7aa;">
+                            <label style="font-size:14px;font-weight:700;color:#9a3412;">🚫 ระงับ/ปลดระงับการเข้าใช้งานพนักงาน</label>
+                            <p style="font-size:12px;color:#64748b;margin-bottom:8px;">ระบุชื่อเดียวกับที่พนักงานกรอกในหน้าเข้าสู่ระบบ ชื่อที่ถูกระงับจะไม่สามารถเข้าใช้งานด้วยชื่อนั้นได้</p>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <input type="text" id="employeeNameToBan" placeholder="ชื่อพนักงานที่ต้องการระงับ" style="flex:1;min-width:180px;margin-bottom:8px;">
+                                <button type="button" class="save-modal-btn" style="background:#dc2626;flex:0 0 auto;margin-bottom:8px;" onclick="banEmployee()">ระงับชื่อ</button>
+                            </div>
+                            <div id="bannedEmployeesList" style="font-size:12px;line-height:1.7;background:white;border:1px solid #fed7aa;border-radius:10px;padding:10px;max-height:150px;overflow:auto;">กำลังโหลดรายชื่อที่ถูกระงับ...</div>
+                        </div>
+
+                        <div class="admin-group" style="margin-top:14px;background:#f0fdf4;padding:14px;border-radius:14px;border:1px solid #bbf7d0;">
+                            <label style="font-size:14px;font-weight:700;color:#166534;">🕒 ประวัติการเข้าสู่ระบบวันนี้</label>
+                            <p style="font-size:12px;color:#64748b;margin-bottom:8px;">แสดงชื่อพนักงานและเวลาที่เข้าสู่ระบบวันนี้จากข้อมูลคลาวด์</p>
+                            <div id="todayLoginLogs" style="font-size:12px;line-height:1.7;background:white;border:1px solid #bbf7d0;border-radius:10px;padding:10px;max-height:220px;overflow:auto;">กำลังโหลดประวัติ...</div>
+                        </div>
+                    </div>
+
+                    <!-- Sub Tab 2: Category & Content Manager -->
+                    <div id="admSubTab-categories" style="display: none;">
+                        <div class="admin-group" style="border: 1px solid #e2e8f0; padding: 14px; border-radius: 14px; background: #f8fafc;">
+                            <label style="color: #2563eb; font-weight: 800; font-size: 14px;">➕ เพิ่มหมวดหมู่ใหม่</label>
+                            <input type="text" id="newCatId" placeholder="ID หมวดหมู่ (เช่น leaves)" style="margin-bottom: 8px;">
+                            <input type="text" id="newCatName" placeholder="ชื่อหมวดหมู่ (เช่น คู่มือการลางาน)" style="margin-bottom: 8px;">
+                            <input type="text" id="newCatHeader" placeholder="ข้อความหัวข้อหมวดหมู่..." style="margin-bottom: 8px;">
+                            <button type="button" class="save-modal-btn" onclick="addNewCategory()">เพิ่มหมวดหมู่</button>
+                        </div>
+
+                        <div class="admin-group" style="margin-top: 14px; border: 1px solid #e2e8f0; padding: 14px; border-radius: 14px; background: #f8fafc;">
+                            <label style="color: #059669; font-weight: 800; font-size: 14px;">➕ เพิ่มขั้นตอน/เนื้อหาในหมวดหมู่</label>
+                            <select id="addStepCatSelect" style="margin-bottom: 8px;"></select>
+                            <input type="text" id="newStepTitle" placeholder="หัวข้อขั้นตอน (เช่น กดเลือกวันลา)" style="margin-bottom: 8px;">
+                            <textarea id="newStepDesc" rows="2" placeholder="คำอธิบายขั้นตอน..." style="margin-bottom: 8px;"></textarea>
+                            <input type="text" id="newStepImg" placeholder="ลิงก์ URL รูปภาพ (https://...)" style="margin-bottom: 8px;"></input>
+                            <button type="button" class="save-modal-btn" style="background: #059669;" onclick="addNewStepToCategory()">เพิ่มขั้นตอน</button>
+                        </div>
+
+                        <div class="admin-group" style="margin-top: 14px;">
+                            <label style="font-weight: 700; font-size: 14px;">รายการหมวดหมู่ทั้งหมด (แก้ไข/ลบ)</label>
+                            <div id="adminCategoryTree" style="max-height: 250px; overflow-y: auto; font-size: 13px; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Sub Tab 3: Footer & Update Date Settings (Creator / Manager / Branch / Update Text) -->
+                    <div id="admSubTab-footer" style="display: none;">
+                        <div class="admin-group" style="background: #eff6ff; padding: 14px; border-radius: 14px; border: 1px solid #bfdbfe; margin-bottom: 14px;">
+                            <label style="color: #1e40af; font-size: 14px; font-weight: 800;">📅 ข้อความวันที่อัปเดตระบบล่าสุด (Banner Badge)</label>
+                            <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;">พิมพ์ข้อความวันที่อัปเดตใหม่เพื่อแสดงบน Banner ด้านหน้าแอป (จะแสดงพร้อมคำว่า อัปเดตระบบล่าสุด)</div>
+                            <input type="text" id="inputUpdateDateText" placeholder="เช่น อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69">
+                        </div>
+
+                        <div class="admin-group">
+                            <label>ชื่อผู้จัดทำ (Creator Name)</label>
+                            <input type="text" id="inputCreatorName" placeholder="ชื่อผู้จัดทำ...">
+                        </div>
+                        <div class="admin-group">
+                            <label>ชื่อผู้จัดการสาขา (Manager Name)</label>
+                            <input type="text" id="inputManagerName" placeholder="ชื่อผู้จัดการสาขา...">
+                        </div>
+                        <div class="admin-group">
+                            <label>ชื่อสาขา (Branch Name)</label>
+                            <input type="text" id="inputBranchName" placeholder="ชื่อสาขา...">
+                        </div>
+                        <button type="button" class="save-modal-btn" style="margin-top: 14px;" onclick="saveFooterConfig()">บันทึกข้อมูลส่วนท้ายและข้อความอัปเดต</button>
+                    </div>
+
+                    <!-- Sub Tab: All employee accounts -->
+                    <div id="admSubTab-employees" style="display:none;">
+                        <section class="admin-group" style="padding:14px;border:1px solid #bfdbfe;border-radius:14px;background:#eff6ff;margin-bottom:12px;">
+                            <label style="font-size:15px;font-weight:800;color:#1e40af;">👥 ข้อมูลบัญชีพนักงานทั้งหมด</label>
+                            <p style="font-size:12px;color:#475569;margin:6px 0 10px;">แสดงเฉพาะข้อมูลที่บันทึกไว้ใน employee_accounts ของ Firebase โปรเจกต์นี้ โดยไม่แสดงรหัสผ่าน</p>
+                            <button type="button" class="save-modal-btn" onclick="loadAllEmployeeAccounts()">🔄 โหลด/รีเฟรชรายชื่อ</button>
+                            <input id="employeeAccountSearch" type="search" placeholder="ค้นหาชื่อ รหัสพนักงาน หรืออีเมล..." oninput="filterEmployeeAccountRows()" style="width:100%;margin-top:10px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:white;">
+                        </section>
+                        <p id="employeeAccountsStatus" role="status" style="font-size:12px;margin:8px 0;color:#475569;">กดโหลดรายชื่อเพื่อเริ่มต้น</p>
+                        <div id="allEmployeeAccountsList" style="display:grid;gap:8px;overflow-x:auto;"></div>
+                    </div>
+
+                    <!-- Sub Tab 4: Tickets & User Support -->
+                    <div id="admSubTab-tickets" style="display: none;">
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;">
+                            <label style="font-size: 14px; font-weight: 700; color: #0f172a;">📩 คำถามจากพนักงานทั้งหมดในระบบ (คลาวด์)</label>
+                            <button type="button" class="save-modal-btn" style="background:#dc2626;color:#fff;" onclick="deleteAllSupportTickets()">🗑️ ลบข้อความติดต่อแอดมินทั้งหมด</button>
+                        </div>
+                        <p style="font-size:12px;color:#b91c1c;margin:6px 0;">การลบนี้จะลบทั้งคำถามที่รอตอบและคำถามที่ตอบแล้ว ไม่สามารถกู้คืนจากระบบนี้ได้</p>
+                        <div id="adminTicketList" style="max-height: 350px; overflow-y: auto; margin-top: 10px;">กำลังโหลด...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p><strong>ผู้จัดทำ:</strong> <span id="displayCreatorName">ชนาธิป ปิ่นทอง</span></p>
+            <p><strong>ผู้จัดการสาขา:</strong> <span id="displayManagerName">คุณสมศักดิ์ สุขใจ</span></p>
+            <p><strong>สาขา:</strong> <span id="displayBranchName">KFC สาขาบิ๊กซี นครสวรรค์</span></p>
+            <p style="margin-top: 8px; opacity: 0.75;">CRG Employee Manual Portal &copy; 2026</p>
+        </footer>
+    </div>
+
+    <!-- Floating Back to Top Button -->
+    <button id="backToTopBtn" onclick="scrollToTop()" title="กลับขึ้นด้านบน">⬆️</button>
+
+    <!-- Edit Category Modal -->
+    <div id="editCategoryModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-weight: 700; font-size: 18px; margin-bottom: 12px;">แก้ไขหมวดหมู่</h3>
+            <div class="admin-group">
+                <label>ชื่อหมวดหมู่</label>
+                <input type="text" id="editCatTitleInput">
+            </div>
+            <div class="admin-group">
+                <label>ข้อความส่วนหัวหมวดหมู่</label>
+                <input type="text" id="editCatHeaderInput">
+            </div>
+            <div class="admin-group">
+                <label>รายการขั้นตอนในหมวดหมู่นี้ (แก้ไขรายละเอียดหรือรูปภาพ)</label>
+                <div id="editStepsListContainer" style="max-height: 220px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; background: #f8fafc;"></div>
+            </div>
+            <div class="modal-btns">
+                <button class="save-modal-btn" onclick="saveEditedCategory()">บันทึกการแก้ไข</button>
+                <button class="close-modal-btn" onclick="closeModal('editCategoryModal')">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Support Ticket Modal -->
+    <div id="supportModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-weight: 700; font-size: 18px;">💬 แจ้งปัญหา / สอบถามคำถาม</h3>
+            <div class="admin-group">
+                <label>ข้อความของคุณ</label>
+                <textarea id="supportText" rows="3" placeholder="พิมพ์ข้อความที่ต้องการสอบถาม..."></textarea>
+            </div>
+            <div class="modal-btns">
+                <button class="save-modal-btn" onclick="submitSupport()">ส่งข้อความ</button>
+                <button class="close-modal-btn" onclick="closeModal('supportModal')">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check Ticket Status Modal -->
+    <div id="checkStatusModal" class="modal">
+        <div class="modal-card">
+            <h3 style="font-weight: 700; font-size: 18px;">🔍 ติดตามสถานะคำถามของคุณ</h3>
+            <p style="font-size: 13px; color: #64748b; margin-top: 4px;">ประวัติข้อความที่คุณเคยส่งและคำตอบจากแอดมิน</p>
+            <div id="myTicketList" style="max-height: 260px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; font-size: 13px; background: #f8fafc; margin-top: 12px;">ไม่มีประวัติคำถาม</div>
+            <div class="modal-btns">
+                <button class="close-modal-btn" onclick="closeModal('checkStatusModal')" style="width: 100%;">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Alert Toast -->
+    <div id="alertModal" class="modal">
+        <div class="modal-card" style="max-width: 380px; text-align: center;">
+            <p id="alertModalText" style="font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 20px; line-height: 1.5;"></p>
+            <button class="save-modal-btn" onclick="closeModal('alertModal')" style="width: 100%;">ตกลง</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence, onAuthStateChanged, signOut, deleteUser, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, onSnapshot, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase configuration switched to the requested moorj-eb0d6 project.
+        // Existing Firestore documents in gavin-8af94 are NOT copied by changing this config.
+        // Keep appId stable so the existing CRG document paths remain structurally unchanged.
+        const appId = 'crg-manual-app-v1';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSuwGX2C0-V1faNqCoznlpPledAdmjWjk",
+            authDomain: "moorj-eb0d6.firebaseapp.com",
+            projectId: "moorj-eb0d6",
+            storageBucket: "moorj-eb0d6.firebasestorage.app",
+            messagingSenderId: "79503880577",
+            appId: "1:79503880577:web:fa5c0ddaf3933c19a7f880",
+            measurementId: "G-4SCLFJJLXC"
+        };
+
+        let app, auth, db;
+        let currentUser = null;
+        let accountOperationInProgress = false;
+        const PRIMARY_ADMIN_UID = '6Qyf56WFFOdkb7QeGztURCRCCAE3';
+        const PRIMARY_ADMIN_EMAIL = 'mooaou8@gmail.com';
+        const PRIMARY_ADMIN_NAME = 'ชนาธิป จินดากลาง';
+        let currentAdminRoleTitle = 'พนักงาน';
+        let currentAdminDisplayName = '';
+        let currentUserIsAdmin = false;
+        let currentUserIsPrimaryAdmin = false;
+        let adminPortalOpen = false;
+
+        // Default categories with reordered steps for 'app-guide'
+        const DEFAULT_CATEGORIES = [
+            {
+                id: 'app-guide',
+                title: 'วิธีเข้าแอป @Work',
+                headerText: 'หมวดหมู่: ขั้นตอนการเข้าใช้งานแอปพลิเคชัน @Work',
+                steps: [
+                    { title: 'ดาวน์โหลดและติดตั้งแอปพลิเคชัน', desc: 'ต้องดาวน์โหลดแอป @Work จาก Google Play Store หรือ App Store ก่อนใช้งาน จากนั้นเปิดแอปเพื่อเริ่มต้น', img: 'https://i.postimg.cc/j2B3Dyzn/Screenshot-2026-1012-155146.png' },
+                    { title: 'เข้าสู่หน้าหลักแอป @Work สำเร็จ', desc: 'ตรวจสอบข้อมูลส่วนตัวและยืนยันตัวตนเพื่อเข้าสู่หน้าการทำงานหลักของ @Work', img: 'https://i.postimg.cc/T3VNPLh1/IMG-20261012-114437.jpg' },
+                    { title: 'เลือกการเข้าสู่ระบบและระบุรหัสพนักงาน', desc: 'เลือกระบบเข้าใช้งาน และกรอกรหัสพนักงานของคุณให้ถูกต้อง', img: 'https://i.postimg.cc/wB9fRqsQ/IMG-20261012-120558.jpg' }
+                ]
+            },
+            {
+                id: 'slip',
+                title: 'ดูสลิปเงินเดือน',
+                headerText: 'หมวดหมู่: ขั้นตอนการขอและเปิดดูสลิปเงินเดือน (Payslip)',
+                steps: [
+                    { title: 'เลือกเมนูบริการสลิปเงินเดือน', desc: 'เข้าสู่เมนูสลิปเงินเดือน หรือ eUnite e-Payslip ผ่านแอป @Work', img: 'https://i.postimg.cc/B6KMdjW1/IMG-20261012-130106.jpg' },
+                    { title: 'เลือกงวดเงินเดือนที่ต้องการตรวจสอบ', desc: 'ระบุประจำเดือนและปีพ.ศ. ที่ต้องการขอเปิดดูเอกสารสลิปเงินเดือน', img: 'https://i.postimg.cc/vT7XZCZg/IMG-20261012-130140.png' },
+                    { title: 'กรอกรหัสผ่านเพื่อความปลอดภัย', desc: 'ใส่รหัสผ่านปลดล็อกไฟล์สลิปเงินเดือนตามที่ระบบกำหนดไว้', img: 'https://i.postimg.cc/Bb5NnRns/IMG-20261012-130242.png' },
+                    { title: 'เปิดดูเอกสารสลิปเงินเดือนแบบเต็ม', desc: 'ตรวจสอบรายละเอียดรายรับ-รายหัก และดาวน์โหลดเอกสารเก็บไว้ได้', img: 'https://i.postimg.cc/598sgQqp/IMG-20261012-130334.png' }
+                ]
+            },
+            {
+                id: 'shift',
+                title: 'คู่มือขอเปลี่ยนกะ',
+                headerText: 'หมวดหมู่: ขั้นตอนการขอเปลี่ยนกะทำงาน',
+                steps: [
+                    { title: 'เปิดเมนูลัด', desc: "กดไอคอน 'ระบบ' (จุด 9 จุด) มุมขวาล่าง", img: 'https://i.postimg.cc/XNDBkkY6/IMG-20261010-232240.jpg' },
+                    { title: 'เข้าสู่เมนูปฏิทิน', desc: "เลือกเมนู 'ปฏิทิน'", img: 'https://i.postimg.cc/CM6nssx1/IMG-20261010-232311.jpg' },
+                    { title: 'เลือกวันที่', desc: 'เลือกวันที่ต้องการเปลี่ยนกะในปฏิทิน', img: 'https://i.postimg.cc/pV15JJLr/IMG-20261010-232507.jpg' },
+                    { title: 'กดปุ่มตัวเลือก', desc: 'กดปุ่ม (...) มุมขวาบน', img: 'https://i.postimg.cc/QNnKJJdV/IMG-20261010-232554.jpg' },
+                    { title: 'เลือกขอเปลี่ยนกะ', desc: "กดเลือกเมนู 'ขอเปลี่ยนกะ'", img: 'https://i.postimg.cc/FFnkVVHH/IMG-20261010-232611.jpg' },
+                    { title: 'เลือกกะใหม่', desc: 'เลือกช่วงเวลากะที่ต้องการเปลี่ยน', img: 'https://i.postimg.cc/qBZ6xxv6/IMG-20261010-232700.jpg' },
+                    { title: 'ปรับสถานะวัน', desc: "ปรับสถานะวันเป็น 'วันทำงาน'", img: 'https://i.postimg.cc/HWP899k7/IMG-20261010-232721.jpg' },
+                    { title: 'ใส่รหัสร้านและกดขออนุมัติ', desc: 'ใส่รหัสร้าน แล้วกดขออนุมัติ', img: 'https://i.postimg.cc/RCbJLLZH/IMG-20261010-232732.jpg' }
+                ]
+            },
+            {
+                id: 'time',
+                title: 'คู่มือขอรับรองเวลา',
+                headerText: 'หมวดหมู่: ขั้นตอนการขอรับรองเวลาทำงาน',
+                steps: [
+                    { title: 'ขั้นตอนที่ 1', desc: 'เปิดหน้าหลักแอพ @Work เพื่อเริ่มขอรับรองเวลา', img: 'https://i.postimg.cc/jqF0qLZ4/IMG-20261011-004552.png' },
+                    { title: 'ขั้นตอนที่ 2', desc: 'เลือกเมนูการจัดการเวลาหรือลงชื่อเข้าใช้งาน', img: 'https://i.postimg.cc/8k0QkjZN/IMG-20261011-004635.png' },
+                    { title: 'ขั้นตอนที่ 3', desc: 'เลือกวันที่ต้องการขอรับรองเวลาทำงาน', img: 'https://i.postimg.cc/3J0MkYcz/IMG-20261011-003942.jpg' },
+                    { title: 'ขั้นตอนที่ 4', desc: 'ตรวจสอบรายละเอียดเวลาเข้า-ออกงาน', img: 'https://i.postimg.cc/fTS4VDPh/IMG-20261011-004818.png' },
+                    { title: 'ขั้นตอนที่ 5', desc: 'ระบุเหตุผลหรือเลือกประเภทการขอรับรองเวลา', img: 'https://i.postimg.cc/Hs8Grdhf/IMG-20261011-004918.png' },
+                    { title: 'ขั้นตอนที่ 6', desc: 'ตรวจสอบความถูกต้องของช่วงเวลา', img: 'https://i.postimg.cc/28ssvgpV/IMG-20261011-004936.jpg' },
+                    { title: 'ขั้นตอนที่ 7', desc: 'กดบันทึกหรือเลือกผู้มีอำนาจอนุมัติ', img: 'https://i.postimg.cc/Dy99sRVG/IMG-20261011-004957.jpg' },
+                    { title: 'ขั้นตอนที่ 8', desc: 'ยืนยันการส่งคำขอรับรองเวลาสำเร็จ', img: 'https://i.postimg.cc/PrggZ0GY/IMG-20261011-005056.png' }
+                ]
+            }
+        ];
+
+        let globalCategories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        let localTicketsFallback = [];
+        let bannedEmployeeNames = [];
+        let cloudVisitEntries = [];
+
+        // In-page Firestore export/import. This intentionally moves data only; it never copies passwords.
+        const CRG_MIGRATION_COLLECTIONS = [
+            'employee_accounts',
+            'admin_users',
+            'banned_users',
+            'artifacts/crg-manual-app-v1/public/data/visits',
+            'artifacts/crg-manual-app-v1/public/data/tickets',
+            'artifacts/crg-manual-app-v1/public/data/staff_requests'
+        ];
+        const CRG_MIGRATION_CONFIG_DOC = 'artifacts/crg-manual-app-v1/public/data/config/settings';
+        const migrationStatus = (message, isError = false) => {
+            const el = document.getElementById('crgMigrationStatus');
+            if (el) { el.textContent = message; el.style.color = isError ? '#b91c1c' : '#166534'; }
+        };
+        const migrationDownload = (filename, content) => {
+            const blob = new Blob([content], {type: 'application/json;charset=utf-8'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        };
+        document.getElementById('crgExportDataBtn')?.addEventListener('click', async () => {
+            if (!db || !auth?.currentUser) return migrationStatus('กรุณาเข้าสู่ระบบก่อนสำรองข้อมูล', true);
+            if (!(await crgConfirm('ดาวน์โหลดข้อมูลจาก Firebase โปรเจกต์ ' + firebaseConfig.projectId + ' ใช่หรือไม่?', 'สำรองข้อมูล Firebase', 'ดาวน์โหลดข้อมูล'))) return;
+            try {
+                migrationStatus('กำลังอ่านข้อมูลจาก Firestore…');
+                const payload = { format: 'crg-firestore-migration-v1', sourceProjectId: firebaseConfig.projectId, exportedAt: new Date().toISOString(), collections: {}, documents: {} };
+                for (const path of CRG_MIGRATION_COLLECTIONS) {
+                    const snap = await getDocs(collection(db, path));
+                    payload.collections[path] = snap.docs.map(d => ({ id: d.id, data: d.data() }));
+                }
+                const configSnap = await getDoc(doc(db, ...CRG_MIGRATION_CONFIG_DOC.split('/')));
+                if (configSnap.exists()) payload.documents[CRG_MIGRATION_CONFIG_DOC] = configSnap.data();
+                migrationDownload('crg-firestore-backup-' + firebaseConfig.projectId + '.json', JSON.stringify(payload, null, 2));
+                migrationStatus('สำรองข้อมูลสำเร็จจาก ' + firebaseConfig.projectId + ' — ดาวน์โหลดไฟล์ JSON แล้ว');
+            } catch (e) { console.error(e); migrationStatus('สำรองไม่สำเร็จ: ' + (e.message || e) + ' ตรวจ Firestore Rules และสิทธิ์บัญชี', true); }
+        });
+        document.getElementById('crgImportDataFile')?.addEventListener('change', async (event) => {
+            const file = event.target.files?.[0]; if (!file) return;
+            if (!db || !auth?.currentUser) { migrationStatus('กรุณาเข้าสู่ระบบก่อนนำเข้าข้อมูล', true); event.target.value = ''; return; }
+            if (!(await crgConfirm('นำข้อมูลจากไฟล์ ' + file.name + ' เข้าโปรเจกต์ ' + firebaseConfig.projectId + ' หรือไม่? ข้อมูลเอกสารที่มี ID ซ้ำจะถูกเขียนทับ', 'นำเข้าข้อมูล', 'ยืนยันนำเข้า'))) { event.target.value = ''; return; }
+            try {
+                const payload = JSON.parse(await file.text());
+                if (payload.format !== 'crg-firestore-migration-v1' || !payload.collections) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+                if (payload.sourceProjectId === firebaseConfig.projectId) throw new Error('ไฟล์ต้นทางและปลายทางเป็นโปรเจกต์เดียวกัน');
+                migrationStatus('กำลังนำเข้าข้อมูลไปยัง ' + firebaseConfig.projectId + '…');
+                let batch = writeBatch(db), count = 0, total = 0;
+                const flush = async () => { if (count) { await batch.commit(); batch = writeBatch(db); count = 0; } };
+                for (const path of CRG_MIGRATION_COLLECTIONS) {
+                    for (const item of (payload.collections[path] || [])) {
+                        if (!item || typeof item.id !== 'string' || !item.data || typeof item.data !== 'object') continue;
+                        batch.set(doc(db, path, item.id), item.data); count++; total++;
+                        if (count >= 450) await flush();
+                    }
+                }
+                if (payload.documents?.[CRG_MIGRATION_CONFIG_DOC]) {
+                    batch.set(doc(db, ...CRG_MIGRATION_CONFIG_DOC.split('/')), payload.documents[CRG_MIGRATION_CONFIG_DOC]); count++; total++;
+                }
+                await flush();
+                migrationStatus('นำเข้าสำเร็จ ' + total + ' เอกสารไปยัง ' + firebaseConfig.projectId + ' ข้อมูลต้นทางยังไม่ถูกลบ');
+            } catch (e) { console.error(e); migrationStatus('นำเข้าไม่สำเร็จ: ' + (e.message || e) + ' ตรวจรูปแบบ JSON และ Firestore Rules', true); }
+            finally { event.target.value = ''; }
+        });
+
+        // Initialize Firebase
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            setPersistence(auth, browserLocalPersistence).catch((e) => console.warn('Could not set browser persistence:', e));
+            onAuthStateChanged(auth, async (user) => {
+                currentUser = user || null;
+                if (accountOperationInProgress) return;
+                if (!user) {
+                    hideLoadingScreen();
+                    showLoginScreen();
+                    return;
+                }
+                showLoadingScreen('กำลังตรวจสอบบัญชี สิทธิ์การใช้งาน และเชื่อมต่อฐานข้อมูล...');
+                try {
+                    await validateSignedInAccount(user, true);
+                    setupCloudListeners();
+                    hideLoadingScreen();
+                } catch (e) {
+                    console.error('Account validation failed:', e);
+                    hideLoadingScreen();
+                    const errorMessage = String((e && e.message) || '');
+                    await signOut(auth).catch(() => {});
+                    // Show a clear, user-facing suspension notice instead of a technical error.
+                    if (errorMessage === 'Account is banned' || errorMessage === 'Account is disabled' || errorMessage === 'Employee name is banned') {
+                        showLoginScreen('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งาน');
+                    } else if (errorMessage === 'Employee profile not found') {
+                        showLoginScreen('ไม่พบบัญชีพนักงานในระบบ กรุณาติดต่อผู้ดูแลระบบ');
+                    } else if (e && (e.code === 'permission-denied' || e.code === 'firestore/permission-denied')) {
+                        showLoginScreen('ไม่สามารถตรวจสอบสถานะบัญชีได้ กรุณาติดต่อผู้ดูแลระบบ');
+                    } else {
+                        showLoginScreen('ไม่สามารถเข้าสู่ระบบได้ กรุณาติดต่อผู้ดูแลระบบ');
+                    }
+                }
+            });
+        } catch(err) {
+            console.log("Fallback local mode active.");
+        }
+
+        function setupCloudListeners() {
+            if (!currentUser || !db) return;
+
+            const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+            
+            onSnapshot(configDocRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.maintenance !== undefined) {
+                        localStorage.setItem('crg_maintenance', data.maintenance ? 'true' : 'false');
+                        checkMaintenanceState();
+                    }
+                    if (data.updateDateText) {
+                        document.getElementById('displayUpdateDateText').innerText = data.updateDateText;
+                        document.getElementById('inputUpdateDateText').value = data.updateDateText;
+                    } else {
+                        document.getElementById('displayUpdateDateText').innerText = 'อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69';
+                        document.getElementById('inputUpdateDateText').value = 'อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69';
+                    }
+                    if (data.creatorName) {
+                        document.getElementById('displayCreatorName').innerText = data.creatorName;
+                        document.getElementById('inputCreatorName').value = data.creatorName;
+                    }
+                    if (data.managerName) {
+                        document.getElementById('displayManagerName').innerText = data.managerName;
+                        document.getElementById('inputManagerName').value = data.managerName;
+                    }
+                    if (data.branchName) {
+                        document.getElementById('displayBranchName').innerText = data.branchName;
+                        document.getElementById('inputBranchName').value = data.branchName;
+                    }
+                    if (data.categories) {
+                        globalCategories = data.categories;
+                        renderDynamicCategories();
+                    }
+                    bannedEmployeeNames = Array.isArray(data.bannedEmployees) ? data.bannedEmployees : [];
+                    renderBannedEmployees();
+                    const activeEmployeeName = localStorage.getItem('crg_employee_name') || '';
+                    if (activeEmployeeName && bannedEmployeeNames.some(n => String(n).trim().toLocaleLowerCase('th') === activeEmployeeName.trim().toLocaleLowerCase('th'))) {
+                        localStorage.removeItem('crg_employee_name');
+                        document.getElementById('mainApp').style.display = 'none';
+                        document.getElementById('loginScreen').style.display = 'flex';
+                        if (!currentUserIsAdmin) showAlert('ชื่อพนักงานนี้ถูกระงับการเข้าใช้งานแล้ว');
+                    }
+                } else {
+                    setDoc(configDocRef, {
+                        maintenance: false,
+                        updateDateText: 'อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69',
+                        creatorName: 'ชนาธิป ปิ่นทอง',
+                        managerName: 'คุณสมศักดิ์ สุขใจ',
+                        branchName: 'KFC สาขาบิ๊กซี นครสวรรค์',
+                        categories: DEFAULT_CATEGORIES,
+                        bannedEmployees: []
+                    });
+                }
+            }, (err) => console.log("Config snapshot error:", err));
+
+            // Sync Visitor Logs Collection across all devices
+            const visitsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'visits');
+            onSnapshot(visitsColRef, (snapshot) => {
+                const entries = [];
+                snapshot.forEach(docSnap => entries.push({ id: docSnap.id, ...docSnap.data() }));
+                entries.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                cloudVisitEntries = entries;
+                document.getElementById('globalVisitBadge').innerText = entries.length;
+                document.getElementById('adminTotalVisits').innerText = entries.length;
+                const escapeHtml = value => String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
+                const allHtml = entries.slice(0, 100).map(v => `<div>• <strong>${escapeHtml(v.name || 'พนักงาน')}</strong> — ${escapeHtml(v.date || (v.timestamp ? new Date(v.timestamp).toLocaleString('th-TH') : 'ไม่ทราบเวลา'))} (${escapeHtml(v.device || 'อุปกรณ์ไม่ระบุ')})</div>`).join('');
+                document.getElementById('visitLogsList').innerHTML = allHtml || 'ไม่มีบันทึกการเข้าชม';
+                renderTodayLoginLogs();
+            }, (err) => console.log("Visits snapshot error:", err));
+
+            // Sync Support Tickets Collection
+            const ticketsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'tickets');
+            onSnapshot(ticketsColRef, (snapshot) => {
+                const ticketsArr = [];
+                snapshot.forEach(docSnap => {
+                    ticketsArr.push({ docId: docSnap.id, ...docSnap.data() });
+                });
+                ticketsArr.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                window.cloudTickets = ticketsArr;
+                renderAdminTickets();
+                renderMyTickets();
+            }, (err) => console.log("Tickets snapshot error:", err));
+
+            // Cloud employee requests: live-sync employee and admin views.
+            const staffRequestsRef = collection(db, 'artifacts', appId, 'public', 'data', 'staff_requests');
+            onSnapshot(staffRequestsRef, (snapshot) => {
+                const requests = [];
+                snapshot.forEach(docSnap => requests.push({ docId: docSnap.id, ...docSnap.data() }));
+                requests.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                window.cloudStaffRequests = requests;
+                renderStaffRequests();
+            }, (err) => {
+                console.error('Staff requests snapshot error:', err);
+                const statusEl = document.getElementById('staffRequestStatus');
+                if (statusEl) statusEl.textContent = 'โหลดคำขอจากคลาวด์ไม่ได้ กรุณาตรวจสอบ Firestore Rules';
+            });
+        }
+
+        window.submitStaffRequest = async function() {
+            const name = (localStorage.getItem('crg_employee_name') || '').trim();
+            const type = document.getElementById('staffRequestType')?.value || '';
+            const startDate = document.getElementById('staffRequestStartDate')?.value || '';
+            const endDate = document.getElementById('staffRequestEndDate')?.value || '';
+            const details = document.getElementById('staffRequestDetails')?.value.trim() || '';
+            const statusEl = document.getElementById('staffRequestStatus');
+            const say = (msg, color='#475569') => { if (statusEl) { statusEl.textContent = msg; statusEl.style.color = color; } };
+            if (!name) { say('ไม่พบชื่อพนักงาน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่', '#b91c1c'); return; }
+            if (!startDate || !endDate) { say('กรุณาเลือกวันที่เริ่มต้นและวันที่สิ้นสุด', '#b91c1c'); return; }
+            if (endDate < startDate) { say('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่มต้น', '#b91c1c'); return; }
+            if (!details) { say('กรุณากรอกรายละเอียดคำขอ', '#b91c1c'); return; }
+            if (!db || !currentUser) { say('ยังเชื่อมต่อคลาวด์ไม่ได้ กรุณาลองใหม่', '#b91c1c'); return; }
+            const btn = document.querySelector('button[onclick="submitStaffRequest()"]');
+            if (btn) btn.disabled = true;
+            try {
+                const ref = collection(db, 'artifacts', appId, 'public', 'data', 'staff_requests');
+                await addDoc(ref, { name, type, startDate, endDate, details, status: 'รออนุมัติ', timestamp: Date.now(), submittedBy: currentUser.uid });
+                document.getElementById('staffRequestDetails').value = '';
+                say('ส่งคำขอแล้ว รอแอดมินพิจารณา', '#15803d');
+            } catch (e) { console.error(e); say('ส่งคำขอไม่สำเร็จ กรุณาตรวจสอบ Firestore Rules', '#b91c1c'); }
+            finally { if (btn) btn.disabled = false; }
+        };
+
+        window.renderStaffRequests = function() {
+            const all = window.cloudStaffRequests || [];
+            const myName = (localStorage.getItem('crg_employee_name') || '').trim().toLocaleLowerCase('th');
+            const esc = v => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const mineEl = document.getElementById('myStaffRequests');
+            if (mineEl) {
+                const mine = all.filter(r => String(r.name || '').trim().toLocaleLowerCase('th') === myName);
+                mineEl.innerHTML = mine.length ? mine.map(r => `<div style="padding:7px 0;border-bottom:1px solid #e2e8f0;"><strong>${esc(r.type)}</strong> · ${esc(r.startDate)}${r.endDate && r.endDate !== r.startDate ? ' ถึง ' + esc(r.endDate) : ''}<br>${esc(r.details)}<br><span style="font-weight:700;color:${r.status === 'อนุมัติ' ? '#15803d' : r.status === 'ไม่อนุมัติ' ? '#b91c1c' : '#b45309'};">สถานะ: ${esc(r.status || 'รออนุมัติ')}</span>${r.adminNote ? '<br>หมายเหตุแอดมิน: ' + esc(r.adminNote) : ''}</div>`).join('') : 'ยังไม่มีคำขอ';
+            }
+            const adminEl = document.getElementById('adminStaffRequestList');
+            const badge = document.getElementById('staffRequestCountBadge');
+            const pending = all.filter(r => (r.status || 'รออนุมัติ') === 'รออนุมัติ').length;
+            if (badge) badge.textContent = pending;
+            if (adminEl) {
+                adminEl.innerHTML = all.length ? all.map(r => `<div style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:10px;background:#f8fafc;"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>${esc(r.name || 'ไม่ระบุชื่อ')} · ${esc(r.type)}</strong><span style="font-size:12px;font-weight:800;color:${r.status === 'อนุมัติ' ? '#15803d' : r.status === 'ไม่อนุมัติ' ? '#b91c1c' : '#b45309'};">${esc(r.status || 'รออนุมัติ')}</span></div><div style="font-size:12px;color:#475569;margin:6px 0;">วันที่: ${esc(r.startDate)}${r.endDate && r.endDate !== r.startDate ? ' ถึง ' + esc(r.endDate) : ''}</div><div style="font-size:13px;white-space:pre-wrap;">${esc(r.details)}</div>${r.status === 'รออนุมัติ' || !r.status ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"><button class="save-modal-btn" style="background:#15803d;" onclick="decideStaffRequest('${r.docId}','อนุมัติ')">อนุมัติ</button><button class="save-modal-btn" style="background:#dc2626;" onclick="decideStaffRequest('${r.docId}','ไม่อนุมัติ')">ไม่อนุมัติ</button></div>` : ''}${r.adminNote ? `<div style="font-size:12px;color:#64748b;margin-top:6px;">หมายเหตุ: ${esc(r.adminNote)}</div>` : ''}</div>`).join('') : 'ยังไม่มีคำขอจากพนักงาน';
+            }
+        };
+
+        window.decideStaffRequest = async function(requestId, status) {
+            if (!currentUserIsAdmin) { showAlert('บัญชีนี้ไม่มีสิทธิ์แอดมิน'); return; }
+            const note = prompt('หมายเหตุถึงพนักงาน (ไม่บังคับ):') || '';
+            try {
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'staff_requests', requestId);
+                await updateDoc(ref, { status, adminNote: note, reviewedAt: Date.now(), reviewedBy: localStorage.getItem('crg_current_admin_user') || 'แอดมิน' });
+                showAlert('บันทึกผลการพิจารณาแล้ว');
+            } catch (e) { console.error(e); showAlert('บันทึกไม่สำเร็จ กรุณาตรวจสอบ Firestore Rules'); }
+        };
+
+        window.renderDynamicCategories = function() {
+            const navEl = document.getElementById('dynamicTabNav');
+            const contentEl = document.getElementById('dynamicCategoryContents');
+
+            if (!navEl || !contentEl) return;
+
+            let navHtml = '';
+            let contentHtml = '';
+
+            globalCategories.forEach((cat, index) => {
+                const isActive = index === 0;
+                navHtml += `<button type="button" onclick="switchTab('${cat.id}')" id="btn-${cat.id}" class="tab-btn ${isActive ? 'active' : ''}">${cat.title}</button>`;
+
+                let stepsHtml = '';
+                (cat.steps || []).forEach((step, sIdx) => {
+                    stepsHtml += `
+                        <div class="step-card">
+                            <div class="step-header">
+                                <div class="step-num">${sIdx + 1}</div>
+                                <div>
+                                    <div class="step-title">${step.title}</div>
+                                    <div class="step-desc">${step.desc}</div>
+                                </div>
+                            </div>
+                            ${step.img ? `<div class="img-container"><img src="${step.img}" alt="${step.title}" loading="lazy" decoding="async" fetchpriority="low"></div>` : ''}
+                        </div>
+                    `;
+                });
+
+                contentHtml += `
+                    <div id="content-${cat.id}" class="tab-content ${isActive ? 'active' : ''}">
+                        <div class="category-header">${cat.headerText || ('หมวดหมู่: ' + cat.title)}</div>
+                        ${stepsHtml || '<p style="font-size:14px; color:#64748b;">ไม่มีข้อมูลขั้นตอนในหมวดหมู่นี้</p>'}
+                    </div>
+                `;
+            });
+
+            navEl.innerHTML = navHtml;
+            contentEl.innerHTML = contentHtml;
+            updateCatSelectDropdown();
+        };
+
+        function updateCatSelectDropdown() {
+            const select = document.getElementById('addStepCatSelect');
+            if (!select) return;
+            select.innerHTML = globalCategories.map(c => `<option value="${c.id}">${c.title}</option>`).join('');
+
+            const tree = document.getElementById('adminCategoryTree');
+            if (tree) {
+                tree.innerHTML = globalCategories.map(c => `
+                    <div style="margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div><strong>[${c.id}] ${c.title}</strong> (${(c.steps || []).length} ขั้นตอน)</div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="save-modal-btn" style="padding: 4px 10px; font-size: 12px;" onclick="openEditCategoryModal('${c.id}')">แก้ไข</button>
+                            <button class="save-modal-btn" style="padding: 4px 10px; font-size: 12px; background: #dc2626;" onclick="deleteCategory('${c.id}')">ลบ</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+        function renderBannedEmployees() {
+            const el = document.getElementById('bannedEmployeesList');
+            if (!el) return;
+            if (!bannedEmployeeNames.length) { el.innerHTML = 'ยังไม่มีชื่อพนักงานที่ถูกระงับ'; return; }
+            el.innerHTML = bannedEmployeeNames.map((name, index) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #f1f5f9;padding:5px 0;"><span>${String(name).replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]))}</span><button type="button" class="save-modal-btn" style="background:#059669;padding:4px 9px;font-size:11px;" onclick="unbanEmployee(${index})">ปลดระงับ</button></div>`).join('');
+        }
+
+        // Protect the primary administrator from name-based suspension.
+        const PROTECTED_ADMIN_UIDS = new Set(['6Qyf56WFFOdkb7QeGztURCRCCAE3']);
+        const PROTECTED_ADMIN_NAMES = ['ชนาธิป จินดากลาง'];
+        function isProtectedAdminName(value) {
+            const normalized = String(value || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('th');
+            return PROTECTED_ADMIN_NAMES.some(n => n.replace(/\s+/g, ' ').trim().toLocaleLowerCase('th') === normalized);
+        }
+
+        window.banEmployee = async function() {
+            const input = document.getElementById('employeeNameToBan');
+            const name = input.value.trim();
+            if (!name) { showAlert('กรุณาระบุชื่อพนักงาน'); return; }
+            if (isProtectedAdminName(name)) { showAlert('ไม่สามารถระงับผู้ดูแลหลัก ชนาธิป จินดากลาง ได้'); return; }
+            if (bannedEmployeeNames.some(n => String(n).toLocaleLowerCase('th') === name.toLocaleLowerCase('th'))) { showAlert('ชื่อนี้ถูกระงับอยู่แล้ว'); return; }
+            if (!currentUser || !db) { showAlert('ยังเชื่อมต่อคลาวด์ไม่ได้ จึงบันทึกการระงับให้ทุกเครื่องไม่ได้'); return; }
+            try {
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+                bannedEmployeeNames = [...bannedEmployeeNames, name];
+                await updateDoc(configDocRef, { bannedEmployees: bannedEmployeeNames });
+                input.value = ''; renderBannedEmployees(); showAlert('ระงับชื่อพนักงานเรียบร้อยแล้ว');
+            } catch (e) { console.error(e); showAlert('บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อและสิทธิ์ Firebase'); }
+        };
+
+        window.unbanEmployee = async function(index) {
+            if (!currentUser || !db) { showAlert('ยังเชื่อมต่อคลาวด์ไม่ได้'); return; }
+            try {
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+                bannedEmployeeNames = bannedEmployeeNames.filter((_, i) => i !== index);
+                await updateDoc(configDocRef, { bannedEmployees: bannedEmployeeNames });
+                renderBannedEmployees(); showAlert('ปลดระงับชื่อพนักงานแล้ว');
+            } catch (e) { console.error(e); showAlert('ปลดระงับไม่สำเร็จ กรุณาตรวจสอบ Firebase'); }
+        };
+
+        function renderTodayLoginLogs() {
+            const el = document.getElementById('todayLoginLogs');
+            if (!el) return;
+            const now = new Date();
+            const todayKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            const today = cloudVisitEntries.filter(v => {
+                if (v.timestamp) { const d = new Date(v.timestamp); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === todayKey; }
+                return false;
+            });
+            if (!today.length) { el.innerHTML = 'วันนี้ยังไม่มีประวัติการเข้าสู่ระบบ'; return; }
+            el.innerHTML = today.map(v => {
+                const time = v.timestamp ? new Date(v.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : (v.date || 'ไม่ทราบเวลา');
+                const name = String(v.name || 'พนักงาน').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
+                return `<div style="padding:5px 0;border-bottom:1px solid #e2e8f0;"><strong>${name}</strong><span style="float:right;color:#64748b;">${time}</span></div>`;
+            }).join('');
+        }
+
+        let accountMode = 'login';
+        window.setAccountMode = function(mode) {
+            accountMode = mode === 'register' ? 'register' : 'login';
+            document.getElementById('registerFields').style.display = accountMode === 'register' ? 'block' : 'none';
+            document.getElementById('accountSubmitButton').textContent = accountMode === 'register' ? 'สร้างบัญชีและเข้าใช้งาน' : 'เข้าสู่ระบบ';
+            document.getElementById('showLoginMode').className = accountMode === 'login' ? 'py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white' : 'py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-700';
+            document.getElementById('showRegisterMode').className = accountMode === 'register' ? 'py-2.5 rounded-xl font-bold text-sm bg-blue-600 text-white' : 'py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-700';
+            document.getElementById('accountPassword').autocomplete = accountMode === 'register' ? 'new-password' : 'current-password';
+            const forgotButton = document.getElementById('forgotPasswordRequestButton');
+            const forgotPanel = document.getElementById('forgotPasswordRequestPanel');
+            if (forgotButton) forgotButton.style.display = accountMode === 'login' ? 'block' : 'none';
+            if (forgotPanel) forgotPanel.style.display = 'none';
+            const warningEl = document.getElementById('loginBanWarning');
+            warningEl.style.display = 'none';
+            warningEl.textContent = '';
+        };
+
+        function showLoadingScreen(message = 'กำลังตรวจสอบบัญชีและโหลดข้อมูลจาก Firebase...') {
+            const screen = document.getElementById('loadingScreen');
+            if (screen) {
+                screen.style.display = 'flex';
+                const heading = screen.querySelector('h3');
+                const detail = screen.querySelector('p');
+                if (heading) heading.textContent = 'กำลังเข้าสู่ระบบ CRG...';
+                if (detail) detail.textContent = message;
+            }
+            const login = document.getElementById('loginScreen');
+            if (login) login.style.display = 'none';
+            const main = document.getElementById('mainApp');
+            if (main) main.style.display = 'none';
+        }
+
+        function hideLoadingScreen() {
+            const screen = document.getElementById('loadingScreen');
+            if (screen) screen.style.display = 'none';
+        }
+
+        function showLoginScreen(message = '') {
+            const screen = document.getElementById('loginScreen');
+            if (screen) screen.style.display = 'flex';
+            const main = document.getElementById('mainApp');
+            if (main) main.style.display = 'none';
+            const warning = document.getElementById('loginBanWarning');
+            if (warning && message) {
+                warning.textContent = message;
+                warning.style.display = 'block';
+            }
+        }
+
+        async function validateSignedInAccount(user, openApp = false) {
+            if (!db || !user) throw new Error('Firebase account or database unavailable');
+            const currentIsPrimary = user.uid === PRIMARY_ADMIN_UID || String(user.email || '').toLowerCase() === PRIMARY_ADMIN_EMAIL;
+            const profileRef = doc(db, 'employee_accounts', user.uid);
+            const profileSnap = await getDoc(profileRef);
+            if (!profileSnap.exists() && !currentIsPrimary) {
+                // Normal accounts must have a Firestore employee profile.
+                throw new Error('Employee profile not found');
+            }
+            // The fixed primary admin can recover access even if their profile document is missing.
+            const profile = profileSnap.exists() ? profileSnap.data() : {
+                uid: user.uid, email: user.email || '', firstName: PRIMARY_ADMIN_NAME, lastName: '',
+                employeeCode: '', status: 'active', disabled: false, role: 'admin'
+            };
+            currentUserIsPrimaryAdmin = currentIsPrimary;
+            let adminRoleSnap = null;
+            try { adminRoleSnap = await getDoc(doc(db, 'admin_users', user.uid)); } catch (roleError) { console.warn('Could not read admin role:', roleError); }
+            currentUserIsAdmin = currentUserIsPrimaryAdmin || !!(adminRoleSnap && adminRoleSnap.exists() && adminRoleSnap.data().active === true);
+            window.currentCRGRoleKey = currentUserIsPrimaryAdmin ? 'super_admin' : (adminRoleSnap && adminRoleSnap.exists() ? (adminRoleSnap.data().roleKey || '') : 'employee');
+            const roleData = adminRoleSnap && adminRoleSnap.exists() ? adminRoleSnap.data() : {};
+            currentAdminRoleTitle = currentUserIsPrimaryAdmin ? 'ผู้ดูแลระบบสูงสุด' : (currentUserIsAdmin ? (roleData.roleTitle || (roleData.roleKey === 'deputy' ? 'รองผู้ดูแลระบบ' : 'ผู้ดูแลระบบ')) : 'พนักงาน');
+            currentAdminDisplayName = currentUserIsPrimaryAdmin ? PRIMARY_ADMIN_NAME : ([profile.firstName, profile.lastName].filter(Boolean).join(' ').trim() || user.email || 'แอดมิน');
+            adminPortalOpen = currentUserIsAdmin;
+            const employeeCode = String(profile.employeeCode || '').trim();
+            const fullName = currentIsPrimary ? PRIMARY_ADMIN_NAME : `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
+            const isProtectedAdmin = currentUserIsAdmin || PROTECTED_ADMIN_UIDS.has(user.uid) || isProtectedAdminName(fullName);
+            if (!isProtectedAdmin && (profile.disabled === true || profile.status === 'banned')) throw new Error('Account is disabled');
+
+            const banChecks = isProtectedAdmin ? [] : [
+                getDoc(doc(db, 'banned_users', user.uid)),
+                ...(employeeCode ? [getDoc(doc(db, 'banned_users', employeeCode))] : []),
+                ...(fullName ? [getDoc(doc(db, 'banned_users', fullName))] : [])
+            ];
+            const banSnaps = await Promise.all(banChecks);
+            if (!isProtectedAdmin && banSnaps.some(snap => snap.exists())) throw new Error('Account is banned');
+
+            const settingsSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings'));
+            if (!isProtectedAdmin && settingsSnap.exists()) {
+                const bans = settingsSnap.data().bannedEmployees;
+                if (Array.isArray(bans) && [employeeCode, fullName].filter(Boolean).some(value =>
+                    bans.some(b => String(b).trim().toLocaleLowerCase('th') === value.trim().toLocaleLowerCase('th'))
+                )) throw new Error('Employee name is banned');
+            }
+
+            if (openApp) {
+                const displayName = fullName || user.email || 'พนักงาน';
+                localStorage.setItem('crg_employee_name', displayName);
+                document.getElementById('loggedUserDisplay').innerText = 'พนักงาน: ' + displayName;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'block';
+                checkAdminStateUI();
+            }
+            return profile;
+        }
+
+        window.handleAccountSubmit = async function() {
+            const email = document.getElementById('accountEmail').value.trim().toLowerCase();
+            const password = document.getElementById('accountPassword').value;
+            const warningEl = document.getElementById('loginBanWarning');
+            const submit = document.getElementById('accountSubmitButton');
+            const warn = (msg) => { warningEl.textContent = msg; warningEl.style.display = 'block'; };
+            warningEl.textContent = ''; warningEl.style.display = 'none';
+            if (!email || !password) return warn('กรุณากรอกอีเมลและรหัสผ่าน');
+            if (password.length < 6) return warn('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+            if (!db || !auth) return warn('เชื่อมต่อ Firebase ไม่สำเร็จ กรุณาลองใหม่');
+            submit.disabled = true;
+            accountOperationInProgress = true;
+            showLoadingScreen('กำลังเข้าสู่ระบบและโหลดข้อมูลบัญชี กรุณารอสักครู่ อย่าปิดหน้านี้...');
+            try {
+                if (accountMode === 'register') {
+                    const firstName = document.getElementById('employeeFirstName').value.trim();
+                    const lastName = document.getElementById('employeeLastName').value.trim();
+                    const employeeCode = document.getElementById('employeeCode').value.trim();
+                    if (!firstName || !lastName || !employeeCode) return warn('กรุณากรอกชื่อ นามสกุล และรหัสพนักงาน');
+                    // Sign in first so Firestore Rules can safely authorize ban/settings lookups.
+                    // If blocked, delete the just-created Auth user before returning.
+                    const credential = await createUserWithEmailAndPassword(auth, email, password);
+                    try {
+                        const banChecks = [
+                            getDoc(doc(db, 'banned_users', employeeCode)),
+                            getDoc(doc(db, 'banned_users', `${firstName} ${lastName}`))
+                        ];
+                        const banSnaps = await Promise.all(banChecks);
+                        if (banSnaps.some(snap => snap.exists())) {
+                            await deleteUser(credential.user);
+                            return warn('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งาน');
+                        }
+                        const settingsSnap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings'));
+                        if (settingsSnap.exists()) {
+                            const bans = settingsSnap.data().bannedEmployees;
+                            if (Array.isArray(bans) && [employeeCode, `${firstName} ${lastName}`].some(value =>
+                                bans.some(b => String(b).trim().toLocaleLowerCase('th') === value.trim().toLocaleLowerCase('th'))
+                            )) {
+                                await deleteUser(credential.user);
+                                return warn('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งาน');
+                            }
+                        }
+                    } catch (banCheckError) {
+                        await deleteUser(credential.user).catch(() => {});
+                        throw banCheckError;
+                    }
+                    const accountData = {
+                        uid: credential.user.uid, email, firstName, lastName,
+                        employeeCode, status: 'active', disabled: false, role: 'employee',
+                        createdAt: Date.now(), updatedAt: Date.now()
+                    };
+                    await setDoc(doc(db, 'employee_accounts', credential.user.uid), accountData);
+                    await validateSignedInAccount(credential.user, true);
+                    setupCloudListeners();
+                    const visitsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'visits');
+                    await addDoc(visitsColRef, { name: `${firstName} ${lastName}`, employeeCode, timestamp: Date.now(), date: new Date().toLocaleString('th-TH'), device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'โทรศัพท์มือถือ/แท็บเล็ต' : 'คอมพิวเตอร์' });
+                } else {
+                    const credential = await signInWithEmailAndPassword(auth, email, password);
+                    const profile = await validateSignedInAccount(credential.user, true);
+                    setupCloudListeners();
+                    const visitsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'visits');
+                    await addDoc(visitsColRef, { name: `${profile.firstName || ''} ${profile.lastName || ''}`.trim(), employeeCode: profile.employeeCode || '', timestamp: Date.now(), date: new Date().toLocaleString('th-TH'), device: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'โทรศัพท์มือถือ/แท็บเล็ต' : 'คอมพิวเตอร์' });
+                }
+            } catch (e) {
+                console.error('Account action failed:', e);
+                const code = e && e.code;
+                if (e.message === 'Account is banned' || e.message === 'Account is disabled' || e.message === 'Employee name is banned') {
+                    await signOut(auth).catch(() => {});
+                    warn('บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบเพื่อขอเปิดใช้งาน');
+                } else if (code === 'auth/email-already-in-use') warn('อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเลือก “มีบัญชีแล้ว”');
+                else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') warn('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+                else if (code === 'auth/weak-password') warn('รหัสผ่านไม่ปลอดภัย กรุณาใช้รหัสผ่านที่ยากขึ้น');
+                else if (code === 'auth/operation-not-allowed') warn('Firebase Authentication ยังไม่ได้เปิดวิธีเข้าสู่ระบบด้วยอีเมล/รหัสผ่าน');
+                else if (code === 'auth/network-request-failed') warn('เชื่อมต่อ Firebase ไม่ได้ กรุณาตรวจอินเทอร์เน็ตแล้วลองใหม่');
+                else if (code === 'permission-denied' || code === 'firestore/permission-denied') warn('Firebase เข้าถึงข้อมูลไม่ได้ (permission-denied) กรุณาตรวจ Firestore Rules สำหรับ employee_accounts, banned_users และ artifacts/' + appId + '/public/data');
+                else if (e && e.message === 'Employee profile not found') warn('เข้าสู่ระบบ Firebase ได้ แต่ไม่พบโปรไฟล์ใน Firestore ที่ employee_accounts/' + (auth.currentUser ? auth.currentUser.uid : '') + ' กรุณาสร้าง/ตรวจโปรไฟล์บัญชีนี้');
+                else warn('ดำเนินการไม่สำเร็จ' + (code ? ' (' + code + ')' : (e && e.message ? ' (' + e.message + ')' : '')) + ' กรุณาตรวจ Console และ Firestore Rules');
+                showLoginScreen();
+            } finally {
+                accountOperationInProgress = false;
+                submit.disabled = false;
+                hideLoadingScreen();
+            }
+        };
+
+        window.handleLogout = async function() {
+            localStorage.removeItem('crg_employee_name');
+            if (auth) await signOut(auth).catch(() => {});
+            location.reload();
+        };
+
+        window.switchTab = function(tabId) {
+            const overlay = document.getElementById('tabLoadingOverlay');
+            if (overlay) overlay.style.display = 'flex';
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const btn = document.getElementById('btn-' + tabId);
+            const content = document.getElementById('content-' + tabId);
+            if (btn) btn.classList.add('active');
+
+            // Simulate quick smooth loading for tab switching with centered overlay
+            setTimeout(() => {
+                if (content) content.classList.add('active');
+                if (overlay) overlay.style.display = 'none';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 600);
+        };
+
+        window.clearCloudVisitLogs = async function() {
+            if (!currentUserIsAdmin) {
+                showAlert('บัญชีนี้ไม่มีสิทธิ์แอดมิน');
+                return;
+            }
+            if (!db || !currentUser) {
+                showAlert('ยังเชื่อมต่อคลาวด์ไม่ได้ จึงไม่สามารถล้างข้อมูลได้');
+                return;
+            }
+            const confirmed = await crgConfirm('ยืนยันลบบันทึกการเข้าชมบนคลาวด์ทั้งหมดใช่หรือไม่? การลบนี้ย้อนกลับไม่ได้', 'ลบบันทึกการเข้าชม', 'ลบข้อมูล', true);
+            if (!confirmed) return;
+            try {
+                const visitsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'visits');
+                const snapshot = await getDocs(visitsColRef);
+                const docs = snapshot.docs;
+                let deleted = 0;
+                // Firestore write batches allow at most 500 operations; use smaller batches for safety.
+                for (let i = 0; i < docs.length; i += 400) {
+                    const batch = writeBatch(db);
+                    docs.slice(i, i + 400).forEach(item => batch.delete(item.ref));
+                    await batch.commit();
+                    deleted += docs.slice(i, i + 400).length;
+                }
+                showAlert(`ล้างบันทึกการเข้าชมบนคลาวด์สำเร็จ ${deleted} รายการ`);
+            } catch (e) {
+                console.error('Clear cloud visit logs failed:', e);
+                showAlert('ล้างข้อมูลไม่สำเร็จ กรุณาตรวจสอบ Firestore Rules และสิทธิ์การลบข้อมูล');
+            }
+        };
+
+        window.handleRefreshData = function() {
+            const overlay = document.getElementById('tabLoadingOverlay');
+            if (overlay) overlay.style.display = 'flex';
+            setTimeout(() => {
+                renderDynamicCategories();
+                if (overlay) overlay.style.display = 'none';
+                showAlert('รีเฟรชอัปเดตข้อมูลคู่มือล่าสุดเรียบร้อยแล้ว!');
+            }, 700);
+        };
+
+        window.scrollToTop = function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Track Scroll for Back to Top Button
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('backToTopBtn');
+            if (!btn) return;
+            if (window.scrollY > 250) {
+                btn.style.display = 'flex';
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+
+        window.openForgotPasswordRequest = function() {
+            const panel = document.getElementById('forgotPasswordRequestPanel');
+            if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        };
+
+        window.submitPasswordResetRequest = async function() {
+            const name = document.getElementById('resetEmployeeName').value.trim();
+            const employeeCode = document.getElementById('resetEmployeeCode').value.trim();
+            const email = document.getElementById('resetEmployeeEmail').value.trim().toLowerCase();
+            const status = document.getElementById('resetRequestStatus');
+            const say = (msg, color='#475569') => { if (status) { status.textContent = msg; status.style.color = color; } };
+            if (!name || !employeeCode || !email) return say('กรุณากรอกชื่อ รหัสพนักงาน และอีเมลให้ครบ', '#b91c1c');
+            if (!db) return say('ยังเชื่อมต่อระบบไม่ได้ กรุณาลองใหม่', '#b91c1c');
+            try {
+                await addDoc(collection(db, 'password_reset_requests'), {
+                    name, employeeCode, email, status: 'pending', createdAt: Date.now(), requestSource: 'login-screen'
+                });
+                say('ส่งคำขอเรียบร้อยแล้ว โปรดตรวจสอบอีเมลของคุณ ทีมงานจะตรวจสอบคำขอและส่งลิงก์ตั้งรหัสผ่านใหม่ให้เมื่อดำเนินการแล้ว', '#15803d');
+                document.getElementById('resetEmployeeName').value = '';
+                document.getElementById('resetEmployeeCode').value = '';
+                document.getElementById('resetEmployeeEmail').value = '';
+            } catch (e) {
+                console.error('Password reset request failed:', e);
+                say('ส่งคำขอไม่สำเร็จ (' + (e.code || e.message) + ') กรุณาติดต่อแอดมินโดยตรง', '#b91c1c');
+            }
+        };
+
+        window.loadPasswordResetRequests = async function() {
+            const list = document.getElementById('passwordResetRequestsList');
+            if (!currentUserIsAdmin || !db) { if (list) list.textContent = 'เฉพาะแอดมินเท่านั้น'; return; }
+            list.textContent = 'กำลังโหลดคำขอ...';
+            try {
+                const snap = await getDocs(collection(db, 'password_reset_requests'));
+                const requests = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+                list.innerHTML = '';
+                if (!requests.length) { list.textContent = 'ยังไม่มีคำขอลืมรหัสผ่าน'; return; }
+                requests.forEach(r => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background:white;border:1px solid #fed7aa;border-radius:10px;padding:10px;overflow-wrap:anywhere;';
+                    const info = document.createElement('div');
+                    info.textContent = `${r.name || 'ไม่ระบุชื่อ'} · รหัสพนักงาน: ${r.employeeCode || 'ไม่ระบุ'} · ${r.email || ''} · สถานะ: ${r.status === 'sent' ? 'ส่งลิงก์แล้ว' : 'รอตรวจสอบ'}`;
+                    info.style.cssText = 'font-size:12px;margin-bottom:8px;'; card.appendChild(info);
+                    if (r.status !== 'sent') {
+                        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'save-modal-btn'; btn.style.cssText = 'background:#ea580c;width:auto;'; btn.textContent = 'ส่งลิงก์ตั้งรหัสผ่านใหม่';
+                        btn.onclick = async () => {
+                            if (!(await crgConfirm(`ยืนยันส่งลิงก์ตั้งรหัสผ่านใหม่ไปที่ ${r.email} ใช่หรือไม่?`, 'ส่งลิงก์ตั้งรหัสผ่านใหม่', 'ส่งลิงก์'))) return;
+                            try {
+                                await sendPasswordResetEmail(auth, r.email);
+                                await updateDoc(doc(db, 'password_reset_requests', r.id), { status: 'sent', handledAt: Date.now(), handledBy: currentUser.uid, handledByName: currentAdminDisplayName });
+                                showAlert('ส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมลแล้ว');
+                                await loadPasswordResetRequests();
+                            } catch (e) { console.error(e); showAlert('ส่งลิงก์ไม่สำเร็จ (' + (e.code || e.message) + ') ตรวจสอบว่าอีเมลมีบัญชี Firebase Authentication'); }
+                        };
+                        card.appendChild(btn);
+                    }
+                    list.appendChild(card);
+                });
+            } catch (e) {
+                console.error(e); list.textContent = 'โหลดคำขอไม่สำเร็จ (' + (e.code || e.message) + ') ตรวจ Firestore Rules';
+            }
+        };
+
+        window.openAdminPasswordModal = function() {
+            if (!currentUser) { showAlert('กรุณาเข้าสู่ระบบบัญชีพนักงานก่อน'); return; }
+            if (!currentUserIsAdmin) { showAlert('บัญชีนี้ยังไม่มีสิทธิ์แอดมิน กรุณาติดต่อแอดมินหลัก'); return; }
+            adminPortalOpen = true;
+            checkAdminStateUI();
+        };
+
+        function checkAdminStateUI() {
+            const isAdmin = !!currentUserIsAdmin && !!adminPortalOpen;
+            const normalView = document.getElementById('normalUserView');
+            const adminPortalView = document.getElementById('adminPortalView');
+            const adminBadge = document.getElementById('adminBadge');
+            const adminGearBtn = document.getElementById('adminGearBtn');
+            const exitAdminBtn = document.getElementById('exitAdminBtn');
+            const adminActiveUsername = document.getElementById('adminActiveUsername');
+            const roleManager = document.getElementById('adminRoleManager');
+            if (normalView) normalView.style.display = isAdmin ? 'none' : 'block';
+            if (adminPortalView) adminPortalView.style.display = isAdmin ? 'block' : 'none';
+            if (adminBadge) adminBadge.style.display = isAdmin ? 'inline-block' : 'none';
+            if (adminGearBtn) adminGearBtn.style.display = (currentUserIsAdmin && !adminPortalOpen) ? 'flex' : 'none';
+            if (exitAdminBtn) exitAdminBtn.style.display = isAdmin ? 'block' : 'none';
+            if (adminActiveUsername) adminActiveUsername.innerText = currentAdminDisplayName + (currentUserIsAdmin ? ' · ' + currentAdminRoleTitle : '');
+            if (roleManager) roleManager.style.display = (currentUserIsPrimaryAdmin || (currentUserIsAdmin && (window.currentCRGRoleKey === 'admin'))) ? 'block' : 'none';
+            if (isAdmin) renderAdminTickets();
+        }
+
+        window.handleAdminLogout = function() {
+            // ออกจากหน้าแอดมินเท่านั้น ไม่ได้ถอนสิทธิ์บัญชี
+            adminPortalOpen = false;
+            checkAdminStateUI();
+            showAlert('ออกจากหน้าแอดมินแล้ว');
+        };
+
+        window.loadAdminRoleAccounts = async function() {
+            const list = document.getElementById('adminRoleAccountsList');
+            if (!(currentUserIsPrimaryAdmin || (currentUserIsAdmin && window.currentCRGRoleKey === 'admin')) || !db) { showAlert('ต้องเป็นผู้ดูแลสูงสุดหรือผู้ดูแลระบบจึงจัดการสิทธิ์ได้'); return; }
+            list.textContent = 'กำลังโหลดบัญชี...';
+            try {
+                const [accountsSnap, adminsSnap] = await Promise.all([getDocs(collection(db, 'employee_accounts')), getDocs(collection(db, 'admin_users'))]);
+                const admins = new Map(adminsSnap.docs.filter(d => d.data().active === true).map(d => [d.id, d.data()]));
+                list.innerHTML = '';
+                accountsSnap.docs.forEach(accountDoc => {
+                    const a = accountDoc.data(); const uid = accountDoc.id;
+                    const name = (`${a.firstName || ''} ${a.lastName || ''}`).trim() || a.email || uid;
+                    const isPrimary = uid === PRIMARY_ADMIN_UID || String(a.email || '').toLowerCase() === PRIMARY_ADMIN_EMAIL;
+                    const role = admins.get(uid) || {};
+                    const isAdmin = isPrimary || admins.has(uid);
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:white;border:1px solid #e2e8f0;border-radius:10px;padding:10px;';
+                    const label = document.createElement('div'); label.style.cssText = 'font-size:12px;min-width:150px;flex:1;overflow-wrap:anywhere;';
+                    label.textContent = `${name} · รหัสพนักงาน: ${a.employeeCode || 'ไม่ระบุ'} · ${a.email || 'ไม่มีอีเมล'} · UID: ${uid}${isPrimary ? ' · ผู้ดูแลระบบสูงสุด' : isAdmin ? ' · ' + (role.roleTitle || 'ผู้ดูแลระบบ') : ' · พนักงาน'}`;
+                    row.appendChild(label);
+                    if (!isPrimary) {
+                        const select = document.createElement('select');
+                        select.style.cssText = 'padding:8px;border:1px solid #cbd5e1;border-radius:8px;max-width:190px;';
+                        const isPrimaryManager = currentUserIsPrimaryAdmin;
+                        const canManageDeputy = isPrimaryManager || (currentUserIsAdmin && window.currentCRGRoleKey === 'admin');
+                        if (!canManageDeputy) { list.appendChild(row); return; }
+                        select.innerHTML = isPrimaryManager
+                            ? '<option value="super_admin">ผู้ดูแลระบบสูงสุด</option><option value="admin">ผู้ดูแลระบบ</option><option value="deputy">รองผู้ดูแลระบบ</option><option value="data_manager">ผู้จัดการข้อมูล</option><option value="auditor">ผู้ตรวจสอบ</option><option value="employee">พนักงาน</option>'
+                            : '<option value="admin">ผู้ดูแลระบบ</option><option value="deputy">รองผู้ดูแลระบบ</option><option value="data_manager">ผู้จัดการข้อมูล</option><option value="auditor">ผู้ตรวจสอบ</option><option value="employee">พนักงาน</option>'; 
+                        select.value = role.roleKey || (isPrimaryManager ? 'employee' : 'deputy');
+                        if (select.value === 'super_admin') select.value = 'admin'; // บัญชีผู้ดูแลสูงสุดกำหนดจาก UID หลักเท่านั้น
+                        // ผู้ดูแลทั่วไปเปลี่ยนได้เฉพาะรองผู้ดูแล ไม่สามารถตั้ง/ลดสิทธิ์ผู้ดูแลระบบ
+                        const canTouchThisRole = isPrimaryManager || !isAdmin || ['admin','deputy','data_manager','auditor'].includes(role.roleKey);
+                        select.disabled = !canTouchThisRole;
+                        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'save-modal-btn'; btn.style.cssText = 'width:auto;flex:0 0 auto;background:#059669';
+                        btn.textContent = isAdmin ? 'บันทึกตำแหน่ง' : 'ให้สิทธิ์';
+                        btn.disabled = !canTouchThisRole;
+                        btn.onclick = () => window.setAccountAdminRole(uid, select.value, name, isAdmin);
+                        row.append(select, btn);
+                        if (isAdmin && (isPrimaryManager || ['admin','deputy','data_manager','auditor'].includes(role.roleKey))) {
+                            const revokeBtn = document.createElement('button'); revokeBtn.type = 'button'; revokeBtn.className = 'save-modal-btn'; revokeBtn.style.cssText = 'width:auto;flex:0 0 auto;background:#dc2626'; revokeBtn.textContent = 'ถอดสิทธิ์';
+                            revokeBtn.onclick = () => window.setAccountAdminRole(uid, 'revoke', name, true);
+                            row.appendChild(revokeBtn);
+                        }
+                    }
+                    list.appendChild(row);
+                });
+                if (!accountsSnap.size) list.textContent = 'ยังไม่พบบัญชีพนักงานใน employee_accounts';
+            } catch (e) {
+                console.error('Admin role account list failed:', e);
+                list.textContent = 'โหลดรายชื่อไม่สำเร็จ (' + (e.code || e.message) + ') — ตรวจ Firestore Rules และบัญชีผู้ดูแลระบบสูงสุด';
+            }
+        };
+
+        window.setAccountAdminRole = async function(uid, roleKey, name, alreadyAdmin = false) {
+            const isPrimaryManager = currentUserIsPrimaryAdmin;
+            const isAdminManager = currentUserIsAdmin && window.currentCRGRoleKey === 'admin';
+            if (!(isPrimaryManager || isAdminManager) || !currentUser || !db || uid === PRIMARY_ADMIN_UID) { showAlert('ไม่มีสิทธิ์จัดการบทบาทนี้'); return; }
+            if (!isPrimaryManager && !['admin','deputy','data_manager','auditor','employee','revoke'].includes(roleKey)) { showAlert('ผู้ดูแลระบบทั่วไปตั้งได้เฉพาะตำแหน่งที่กำหนด ไม่สามารถตั้งผู้ดูแลระบบสูงสุด'); return; }
+            if (roleKey === 'revoke') {
+                if (!isPrimaryManager) {
+                    const targetSnap = await getDoc(doc(db, 'admin_users', uid));
+                    if (!targetSnap.exists() || !['admin','deputy','data_manager','auditor'].includes(targetSnap.data().roleKey)) { showAlert('ไม่สามารถถอดสิทธิ์ตำแหน่งนี้ได้'); return; }
+                }
+                if (!(await crgConfirm(`ยืนยันถอดสิทธิ์ผู้ดูแลระบบของ ${name} ใช่หรือไม่?`, 'ถอดสิทธิ์แอดมิน', 'ยืนยันถอดสิทธิ์', true))) return;
+                try {
+                    await deleteDoc(doc(db, 'admin_users', uid));
+                    showAlert(`ถอดสิทธิ์ผู้ดูแลระบบของ ${name} สำเร็จ`);
+                    await loadAdminRoleAccounts();
+                } catch (e) { console.error(e); showAlert('ถอดสิทธิ์ไม่สำเร็จ (' + (e.code || e.message) + ') ตรวจ Firestore Rules'); }
+                return;
+            }
+            const roleTitles = { admin: 'ผู้ดูแลระบบ', deputy: 'รองผู้ดูแลระบบ', data_manager: 'ผู้จัดการข้อมูล', auditor: 'ผู้ตรวจสอบ', employee: 'พนักงาน' };
+            const roleTitle = roleTitles[roleKey] || 'ผู้ดูแลระบบ';
+            if (roleKey === 'super_admin') { showAlert('ตำแหน่งผู้ดูแลระบบสูงสุดกำหนดจากบัญชีหลักเท่านั้น'); return; }
+            if (roleKey === 'employee') { roleKey = 'revoke'; return window.setAccountAdminRole(uid, 'revoke', name, true); }
+            if (!(await crgConfirm(`${alreadyAdmin ? 'กำหนดตำแหน่ง' : 'เพิ่มสิทธิ์'} ${roleTitle} ให้ ${name} ใช่หรือไม่?`, 'จัดการสิทธิ์ผู้ดูแล', 'ยืนยัน'))) return;
+            try {
+                const roleRef = doc(db, 'admin_users', uid);
+                await setDoc(roleRef, { uid, active: true, roleKey, roleTitle, grantedBy: currentUser.uid, grantedByName: currentAdminDisplayName, updatedAt: Date.now() });
+                showAlert(`บันทึกตำแหน่ง ${roleTitle} ให้ ${name} สำเร็จ`);
+                await loadAdminRoleAccounts();
+            } catch (e) { console.error(e); showAlert('บันทึกสิทธิ์ไม่สำเร็จ (' + (e.code || e.message) + ') ต้อง Publish Firestore Rules ชุดล่าสุดก่อน'); }
+        };
+
+        let cachedEmployeeAccountRows = [];
+        window.loadAllEmployeeAccounts = async function() {
+            const list = document.getElementById('allEmployeeAccountsList');
+            const status = document.getElementById('employeeAccountsStatus');
+            if (!list || !status) return;
+            if (!currentUserIsAdmin || !currentUser || !db) { status.textContent = 'ต้องเข้าสู่ระบบด้วยบัญชีแอดมินก่อน'; return; }
+            list.textContent = 'กำลังโหลดรายชื่อจาก Firebase...';
+            status.textContent = 'กำลังอ่านข้อมูลบัญชีพนักงาน';
+            try {
+                const snap = await getDocs(collection(db, 'employee_accounts'));
+                cachedEmployeeAccountRows = snap.docs.map(d => {
+                    const a = d.data();
+                    const fullName = (`${a.firstName || ''} ${a.lastName || ''}`).trim();
+                    const admin = d.id === PRIMARY_ADMIN_UID || String(a.email || '').toLowerCase() === PRIMARY_ADMIN_EMAIL;
+                    return { uid:d.id, code:String(a.employeeCode || ''), name:fullName, email:String(a.email || ''), position:String(a.position || a.jobTitle || a.roleTitle || a.role || ''), status:(a.disabled === true || a.status === 'banned') ? 'ระงับใช้งาน' : (a.status || 'ใช้งาน'), admin, text:`${fullName} ${a.employeeCode || ''} ${a.email || ''} ${a.position || ''} ${a.jobTitle || ''} ${a.roleTitle || ''} ${a.role || ''} ${d.id}`.toLowerCase() };
+                }).sort((a,b) => a.name.localeCompare(b.name, 'th'));
+                renderEmployeeAccountRows(cachedEmployeeAccountRows);
+                status.textContent = `พบ ${cachedEmployeeAccountRows.length} บัญชีใน employee_accounts · รหัสพนักงานที่ไม่มีข้อมูลจะแสดงเป็น “ไม่ระบุ”`;
+            } catch(e) {
+                console.error('Load employee accounts failed:', e);
+                cachedEmployeeAccountRows = [];
+                list.textContent = 'โหลดรายชื่อไม่สำเร็จ (' + (e.code || e.message) + ') กรุณาตรวจ Firestore Rules ให้แอดมินอ่าน employee_accounts ได้';
+                status.textContent = 'ไม่สามารถอ่านข้อมูลได้';
+            }
+        };
+        function renderEmployeeAccountRows(rows) {
+            const list = document.getElementById('allEmployeeAccountsList');
+            if (!list) return;
+            list.innerHTML = '';
+            if (!rows.length) { list.textContent = 'ไม่พบข้อมูลพนักงาน'; return; }
+            rows.forEach(a => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:white;border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:grid;gap:5px;overflow-wrap:anywhere;';
+                const title = document.createElement('strong'); title.textContent = a.name || '(ไม่ระบุชื่อ)'; title.style.cssText = 'font-size:14px;color:#0f172a;';
+                const line = document.createElement('div'); line.style.cssText = 'font-size:12px;color:#475569;line-height:1.6;';
+                line.textContent = `รหัสพนักงาน: ${a.code || 'ไม่ระบุ'} · อีเมล: ${a.email || 'ไม่มีอีเมล'} · ตำแหน่ง: ${a.position || 'ไม่ระบุ'} · สถานะ: ${a.status}${a.admin ? ' · แอดมิน' : ''}`;
+                card.append(title,line); list.appendChild(card);
+            });
+        }
+        window.filterEmployeeAccountRows = function() {
+            const q = (document.getElementById('employeeAccountSearch')?.value || '').trim().toLowerCase();
+            renderEmployeeAccountRows(cachedEmployeeAccountRows.filter(a => !q || a.text.includes(q)));
+        };
+
+        window.switchAdminSubTab = function(subTabId) {
+            ['general', 'categories', 'footer', 'tickets', 'requests', 'employees'].forEach(t => {
+                const panel = document.getElementById('admSubTab-' + t);
+                const button = document.getElementById('admTabBtn-' + t);
+                if (panel) panel.style.display = (t === subTabId) ? 'block' : 'none';
+                if (button) button.classList.toggle('active', t === subTabId);
+            });
+        };
+
+        window.setMaintenance = async function(status) {
+            localStorage.setItem('crg_maintenance', status ? 'true' : 'false');
+            checkMaintenanceState();
+            if (currentUser && db) {
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+                await updateDoc(configDocRef, { maintenance: status });
+            }
+            showAlert(status ? 'เปิดโหมดปิดปรับปรุงระบบแล้ว' : 'ปิดโหมดปรับปรุงระบบแล้ว');
+        };
+
+        function checkMaintenanceState() {
+            const isMaint = localStorage.getItem('crg_maintenance') === 'true';
+            document.getElementById('maintenanceBanner').style.display = isMaint ? 'block' : 'none';
+        }
+
+        window.saveFooterConfig = async function() {
+            const updateDateText = document.getElementById('inputUpdateDateText').value.trim();
+            const creator = document.getElementById('inputCreatorName').value.trim();
+            const manager = document.getElementById('inputManagerName').value.trim();
+            const branch = document.getElementById('inputBranchName').value.trim();
+
+            const finalUpdateText = updateDateText || 'อัปเดตระบบล่าสุด ณ วันที่ 12 ต.ค. 69';
+            document.getElementById('displayUpdateDateText').innerText = finalUpdateText;
+            document.getElementById('displayCreatorName').innerText = creator || 'ชนาธิป ปิ่นทอง';
+            document.getElementById('displayManagerName').innerText = manager || 'คุณสมศักดิ์ สุขใจ';
+            document.getElementById('displayBranchName').innerText = branch || 'KFC สาขาบิ๊กซี นครสวรรค์';
+
+            if (currentUser && db) {
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+                await updateDoc(configDocRef, {
+                    updateDateText: finalUpdateText,
+                    creatorName: creator,
+                    managerName: manager,
+                    branchName: branch
+                });
+            }
+            showAlert('บันทึกข้อมูลส่วนท้ายและข้อความอัปเดตระบบเรียบร้อยแล้ว!');
+        };
+
+        window.addNewCategory = async function() {
+            const id = document.getElementById('newCatId').value.trim();
+            const title = document.getElementById('newCatName').value.trim();
+            const header = document.getElementById('newCatHeader').value.trim();
+            if (!id || !title) {
+                showAlert('กรุณากรอก ID และชื่อหมวดหมู่');
+                return;
+            }
+            globalCategories.push({
+                id: id,
+                title: title,
+                headerText: header || ('หมวดหมู่: ' + title),
+                steps: []
+            });
+            await syncCategoriesToCloud();
+            renderDynamicCategories();
+            document.getElementById('newCatId').value = '';
+            document.getElementById('newCatName').value = '';
+            document.getElementById('newCatHeader').value = '';
+            showAlert('เพิ่มหมวดหมู่สำเร็จ!');
+        };
+
+        window.addNewStepToCategory = async function() {
+            const catId = document.getElementById('addStepCatSelect').value;
+            const title = document.getElementById('newStepTitle').value.trim();
+            const desc = document.getElementById('newStepDesc').value.trim();
+            const img = document.getElementById('newStepImg').value.trim();
+
+            if (!title) {
+                showAlert('กรุณากรอกหัวข้อขั้นตอน');
+                return;
+            }
+
+            const cat = globalCategories.find(c => c.id === catId);
+            if (cat) {
+                if (!cat.steps) cat.steps = [];
+                cat.steps.push({ title, desc, img });
+                await syncCategoriesToCloud();
+                renderDynamicCategories();
+                document.getElementById('newStepTitle').value = '';
+                document.getElementById('newStepDesc').value = '';
+                document.getElementById('newStepImg').value = '';
+                showAlert('เพิ่มขั้นตอนเรียบร้อย!');
+            }
+        };
+
+        window.openEditCategoryModal = function(catId) {
+            const cat = globalCategories.find(c => c.id === catId);
+            if (!cat) return;
+
+            document.getElementById('editCatOriginalId').value = cat.id;
+            document.getElementById('editCatIdInput').value = cat.id;
+            document.getElementById('editCatTitleInput').value = cat.title;
+            document.getElementById('editCatHeaderInput').value = cat.headerText || '';
+
+            let stepsHtml = '';
+            (cat.steps || []).forEach((st, idx) => {
+                stepsHtml += `
+                    <div style="margin-bottom: 10px; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px; background: white;">
+                        <div style="font-weight:700; font-size: 12px; margin-bottom: 4px;">ขั้นตอนที่ ${idx + 1}</div>
+                        <input type="text" id="editStepTitle_${idx}" value="${st.title}" placeholder="หัวข้อ..." style="width:100%; margin-bottom:4px; padding:6px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <input type="text" id="editStepDesc_${idx}" value="${st.desc || ''}" placeholder="คำอธิบาย..." style="width:100%; margin-bottom:4px; padding:6px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <input type="text" id="editStepImg_${idx}" value="${st.img || ''}" placeholder="URL รูปภาพ..." style="width:100%; padding:6px; font-size:12px; border:1px solid #cbd5e1; border-radius:6px;">
+                    </div>
+                `;
+            });
+            document.getElementById('editStepsListContainer').innerHTML = stepsHtml || '<p style="font-size:12px; color:#64748b;">ไม่มีขั้นตอน</p>';
+            document.getElementById('editCategoryModal').style.display = 'flex';
+        };
+
+        window.saveEditedCategory = async function() {
+            const origId = document.getElementById('editCatOriginalId').value;
+            const newId = document.getElementById('editCatIdInput').value.trim();
+            const newTitle = document.getElementById('editCatTitleInput').value.trim();
+            const newHeader = document.getElementById('editCatHeaderInput').value.trim();
+
+            const cat = globalCategories.find(c => c.id === origId);
+            if (!cat) return;
+
+            cat.id = newId || cat.id;
+            cat.title = newTitle || cat.title;
+            cat.headerText = newHeader || cat.headerText;
+
+            if (cat.steps) {
+                cat.steps.forEach((st, idx) => {
+                    const tInput = document.getElementById(`editStepTitle_${idx}`);
+                    const dInput = document.getElementById(`editStepDesc_${idx}`);
+                    const iInput = document.getElementById(`editStepImg_${idx}`);
+                    if (tInput) st.title = tInput.value;
+                    if (dInput) st.desc = dInput.value;
+                    if (iInput) st.img = iInput.value;
+                });
+            }
+
+            await syncCategoriesToCloud();
+            renderDynamicCategories();
+            closeModal('editCategoryModal');
+            showAlert('บันทึกการแก้ไขหมวดหมู่สำเร็จ!');
+        };
+
+        window.deleteCategory = async function(catId) {
+            globalCategories = globalCategories.filter(c => c.id !== catId);
+            await syncCategoriesToCloud();
+            renderDynamicCategories();
+            showAlert('ลบหมวดหมู่เรียบร้อย!');
+        };
+
+        async function syncCategoriesToCloud() {
+            if (currentUser && db) {
+                const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'settings');
+                await updateDoc(configDocRef, { categories: globalCategories });
+            }
+        }
+
+        window.submitSupport = async function() {
+            const text = document.getElementById('supportText').value.trim();
+            if (!text) {
+                showAlert('กรุณากรอกข้อความก่อนส่ง');
+                return;
+            }
+            const userName = localStorage.getItem('crg_employee_name') || 'พนักงาน';
+            const newTicket = {
+                name: userName,
+                message: text,
+                reply: 'รอแอดมินตอบกลับ',
+                submittedBy: currentUser?.uid || '',
+                date: new Date().toLocaleString('th-TH'),
+                timestamp: Date.now()
+            };
+
+            if (currentUser && db) {
+                try {
+                    const ticketsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'tickets');
+                    await addDoc(ticketsColRef, newTicket);
+                } catch(e) {
+                    localTicketsFallback.unshift(newTicket);
+                }
+            } else {
+                localTicketsFallback.unshift(newTicket);
+            }
+
+            showAlert('ส่งคำถามเข้าสู่ระบบเรียบร้อยแล้ว!');
+            document.getElementById('supportText').value = '';
+            closeModal('supportModal');
+            renderMyTickets();
+            renderAdminTickets();
+        };
+
+        function getCombinedTickets() {
+            const cloud = window.cloudTickets || [];
+            const merged = [...localTicketsFallback, ...cloud];
+            return merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        }
+
+        function renderAdminTickets() {
+            const listEl = document.getElementById('adminTicketList');
+            const badgeEl = document.getElementById('ticketCountBadge');
+            if (!listEl) return;
+
+            const tickets = getCombinedTickets();
+            if (badgeEl) badgeEl.innerText = tickets.length;
+
+            if (tickets.length === 0) {
+                listEl.innerHTML = '<div style="font-size: 13px; color: #64748b; padding: 12px; text-align: center;">ไม่มีรายการคำถามในขณะนี้</div>';
+                return;
+            }
+
+            listEl.innerHTML = tickets.map((t) => `
+                <div class="ticket-item-admin">
+                    <div><strong>👤 ${t.name}:</strong> ${t.message}</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top:2px;">🕒 ${t.date || ''}</div>
+                    <div class="reply-input-group">
+                        <input type="text" id="replyInput_${t.docId || t.timestamp}" value="${t.reply === 'รอแอดมินตอบกลับ' ? '' : t.reply}" placeholder="พิมพ์คำตอบจากแอดมิน...">
+                        <button onclick="replyCloudTicket('${t.docId || ''}', ${t.timestamp})">ตอบกลับ</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.deleteAllSupportTickets = async function() {
+            if (!isAdmin() || !currentUser || !db) {
+                showAlert('เฉพาะผู้ดูแลระบบที่เข้าสู่ระบบแล้วเท่านั้นจึงจะลบข้อความได้');
+                return;
+            }
+            const currentTickets = getCombinedTickets();
+            if (currentTickets.length === 0) {
+                showAlert('ไม่มีข้อความติดต่อแอดมินให้ลบ');
+                return;
+            }
+            const firstConfirm = confirm(`ยืนยันลบข้อความติดต่อแอดมินทั้งหมด ${currentTickets.length} รายการหรือไม่?\n\nรวมทั้งข้อความที่ยังไม่ได้ตอบและข้อความที่ตอบแล้ว`);
+            if (!firstConfirm) return;
+            const secondConfirm = confirm('ยืนยันครั้งสุดท้าย: ข้อความที่ลบจะไม่สามารถกู้คืนจากระบบนี้ได้ ต้องการดำเนินการต่อหรือไม่?');
+            if (!secondConfirm) return;
+
+            try {
+                const ticketsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'tickets');
+                const snapshot = await getDocs(ticketsColRef);
+                const docs = snapshot.docs;
+                for (let i = 0; i < docs.length; i += 400) {
+                    const batch = writeBatch(db);
+                    docs.slice(i, i + 400).forEach(ticketDoc => batch.delete(ticketDoc.ref));
+                    await batch.commit();
+                }
+                localTicketsFallback = [];
+                window.cloudTickets = [];
+                renderAdminTickets();
+                renderMyTickets();
+                showAlert(`ลบข้อความติดต่อแอดมินจาก Firebase แล้ว ${docs.length} รายการ`);
+            } catch (error) {
+                console.error('Delete support tickets failed:', error);
+                showAlert('ลบข้อความไม่สำเร็จ กรุณาตรวจสอบสิทธิ์ Firestore Rules และลองใหม่');
+            }
+        };
+
+        window.replyCloudTicket = async function(docId, timestamp) {
+            const inputId = `replyInput_${docId || timestamp}`;
+            const inputEl = document.getElementById(inputId);
+            const replyVal = inputEl ? inputEl.value.trim() : '';
+            
+            if (!replyVal) {
+                showAlert('กรุณาพิมพ์คำตอบก่อนบันทึก');
+                return;
+            }
+
+            if (docId && currentUser && db) {
+                const tDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'tickets', docId);
+                await updateDoc(tDocRef, { reply: replyVal, replyByUid: currentUser.uid, replyByName: currentAdminDisplayName || currentUser.email || 'แอดมิน', replyByTitle: currentAdminRoleTitle || 'ผู้ดูแลระบบ', replyAt: Date.now() });
+            } else {
+                const item = localTicketsFallback.find(t => t.timestamp === timestamp);
+                if (item) { item.reply = replyVal; item.replyByUid = currentUser?.uid || ''; item.replyByName = currentAdminDisplayName || 'แอดมิน'; item.replyByTitle = currentAdminRoleTitle || 'ผู้ดูแลระบบ'; item.replyAt = Date.now(); }
+            }
+
+            showAlert('ตอบกลับคำถามเรียบร้อย!');
+            renderAdminTickets();
+            renderMyTickets();
+        };
+
+        function renderMyTickets() {
+            const userName = localStorage.getItem('crg_employee_name');
+            const tickets = getCombinedTickets().filter(t => (currentUser?.uid && t.submittedBy ? t.submittedBy === currentUser.uid : t.name === userName));
+            const listEl = document.getElementById('myTicketList');
+            if (!listEl) return;
+
+            if (tickets.length === 0) {
+                listEl.innerHTML = '<div style="padding: 12px; text-align: center; color: #64748b;">ยังไม่มีประวัติคำถามของคุณ</div>';
+            } else {
+                listEl.innerHTML = tickets.map(t => `
+                    <div style="padding: 10px; border-bottom: 1px solid #e2e8f0; margin-bottom: 6px; background: white; border-radius: 8px;">
+                        <div><strong>คำถาม:</strong> ${t.message}</div>
+                        <div style="color: ${t.reply === 'รอแอดมินตอบกลับ' ? '#d97706' : '#059669'}; margin-top: 4px; font-weight: 700;">
+                            <strong>คำตอบจาก ${t.replyByName || 'แอดมิน'}${t.replyByTitle ? ' · ' + t.replyByTitle : ''}:</strong> ${t.reply}
+                        </div>
+                        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">🕒 ${t.date || ''}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        window.openSupportModal = function() {
+            document.getElementById('supportText').value = '';
+            document.getElementById('supportModal').style.display = 'flex';
+        };
+
+        window.openCheckStatusModal = function() {
+            renderMyTickets();
+            document.getElementById('checkStatusModal').style.display = 'flex';
+        };
+
+        window.closeModal = function(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        };
+
+        window.showAlert = function(msg) {
+            document.getElementById('alertModalText').innerText = msg;
+            document.getElementById('alertModal').style.display = 'flex';
+        };
+
+        window.onload = function() {
+            renderDynamicCategories();
+            // Firebase Auth decides whether to show login or the loading screen.
+            // Do not force the login screen here: it can race with restored sessions.
+            checkMaintenanceState();
+        };
+    </script>
+<!--
+  FIRESTORE RULES EMBEDDED FOR CONVENIENCE ONLY
+  These rules are NOT deployed or enforced by this HTML file.
+  Copy the content of the element with id="embeddedFirestoreRules" into Firebase Console > Firestore Database > Rules, then Publish.
+-->
+<script type="text/plain" id="embeddedFirestoreRules">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isPrimaryAdmin() {
+      return signedIn() && (request.auth.uid == '6Qyf56WFFOdkb7QeGztURCRCCAE3'
+        || request.auth.token.email == 'mooaou8@gmail.com'
+        || request.auth.token.email == 'mooaou@gmail.com');
+    }
+    function hasActiveRole() {
+      return signedIn() && exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.active == true;
+    }
+    function isAdmin() { return isPrimaryAdmin() || hasActiveRole(); }
+    function isRegularAdmin() {
+      return hasActiveRole() && get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data.roleKey == 'admin';
+    }
+    function targetIsDeputy(uid) {
+      return exists(/databases/$(database)/documents/admin_users/$(uid))
+        && get(/databases/$(database)/documents/admin_users/$(uid)).data.roleKey == 'deputy';
+    }
+
+    match /admin_users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isPrimaryAdmin());
+      allow list: if isPrimaryAdmin() || isRegularAdmin();
+      allow create: if request.resource.data.uid == uid && request.resource.data.active == true
+        && (isPrimaryAdmin() || (isRegularAdmin() && request.resource.data.roleKey in ['admin','deputy','data_manager','auditor']));
+      allow update: if request.resource.data.uid == uid && request.resource.data.active == true
+        && (isPrimaryAdmin() || (isRegularAdmin() && resource.data.roleKey in ['admin','deputy','data_manager','auditor'] && request.resource.data.roleKey in ['admin','deputy','data_manager','auditor']));
+      allow delete: if isPrimaryAdmin() || (isRegularAdmin() && targetIsDeputy(uid));
+    }
+
+    match /employee_accounts/{uid} {
+      allow get, list: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'active'
+        && request.resource.data.disabled == false;
+      // แอดมินจัดการบัญชีพนักงานได้; การเพิ่ม/ถอดบทบาทแอดมินทำผ่าน admin_users เท่านั้น
+      allow update, delete: if isAdmin();
+    }
+
+    match /banned_users/{banId} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /artifacts/crg-manual-app-v1/public/data/config/settings {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /artifacts/crg-manual-app-v1/public/data/visits/{visitId} {
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /artifacts/crg-manual-app-v1/public/data/tickets/{ticketId} {
+      allow create: if signedIn();
+      allow read: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /artifacts/crg-manual-app-v1/public/data/staff_requests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.submittedBy == request.auth.uid;
+      allow read: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /password_reset_requests/{requestId} {
+      allow create: if request.resource.data.keys().hasAll(['name','employeeCode','email','status','createdAt','requestSource'])
+        && request.resource.data.name is string && request.resource.data.name.size() > 0
+        && request.resource.data.employeeCode is string && request.resource.data.employeeCode.size() > 0
+        && request.resource.data.email is string && request.resource.data.email.size() > 0
+        && request.resource.data.status == 'pending' && request.resource.data.createdAt is number
+        && request.resource.data.requestSource == 'login-screen';
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+</script>
+
+<script>
+/* Custom Promise-based confirmation modal used by admin actions */
+window.crgConfirm = function(message, title = 'ยืนยันการทำรายการ', okText = 'ยืนยัน', danger = false) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('crgConfirmOverlay');
+    const titleEl = document.getElementById('crgConfirmTitle');
+    const messageEl = document.getElementById('crgConfirmMessage');
+    const ok = document.getElementById('crgConfirmOk');
+    const cancel = document.getElementById('crgConfirmCancel');
+    const icon = document.getElementById('crgConfirmIcon');
+    if (!overlay || !titleEl || !messageEl || !ok || !cancel) {
+      resolve(window.confirm(message));
+      return;
+    }
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    ok.textContent = okText;
+    ok.classList.toggle('is-danger', !!danger);
+    icon.textContent = danger ? '!' : '✓';
+    icon.style.background = danger ? '#fff1f2' : '#eaf2ff';
+    icon.style.color = danger ? '#e11d48' : '#2563eb';
+    overlay.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    const finish = value => {
+      overlay.classList.remove('is-open');
+      document.body.style.overflow = '';
+      ok.removeEventListener('click', yes);
+      cancel.removeEventListener('click', no);
+      overlay.removeEventListener('click', outside);
+      document.removeEventListener('keydown', keydown);
+      resolve(value);
+    };
+    const yes = () => finish(true);
+    const no = () => finish(false);
+    const outside = event => { if (event.target === overlay) no(); };
+    const keydown = event => { if (event.key === 'Escape') no(); };
+    ok.addEventListener('click', yes);
+    cancel.addEventListener('click', no);
+    overlay.addEventListener('click', outside);
+    document.addEventListener('keydown', keydown);
+    setTimeout(() => ok.focus(), 30);
+  });
+};
+</script>
+
+</body>
+</html>
