@@ -1352,6 +1352,9 @@ button:focus-visible,a:focus-visible{outline:3px solid #93c5fd!important;outline
             greetingEl.textContent = 'สวัสดี' + weekday;
             dateEl.textContent = dateText;
         }
+        // Refresh the greeting regularly so an already-open page also changes at Thailand's date boundary.
+        if (window.loginGreetingRefreshTimer) clearInterval(window.loginGreetingRefreshTimer);
+        window.loginGreetingRefreshTimer = setInterval(updateLoginGreeting, 60 * 1000);
 
         // In-page Firestore export/import. This intentionally moves data only; it never copies passwords.
         const CRG_MIGRATION_COLLECTIONS = [
